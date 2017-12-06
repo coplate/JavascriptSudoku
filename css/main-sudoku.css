@@ -1,0 +1,85 @@
+
+body {
+	margin:0px;
+	padding:0px;
+}
+
+#game-area {
+  width: 500px;
+	margin: 50px;
+	padding: 0px;
+	border: 2px solid black;
+}
+
+#game-area * {
+    box-sizing: border-box;
+    cursor: default;
+    -webkit-touch-callout: none; /* iOS Safari */
+    -webkit-user-select: none; /* Safari */
+    -khtml-user-select: none; /* Konqueror HTML */
+    -moz-user-select: none; /* Firefox */
+    -ms-user-select: none; /* Internet Explorer/Edge */
+    user-select: none; /* Non-prefixed version, currently
+                                  supported by Chrome and Opera */
+}
+
+td.grid-square {
+  width: 11.11%;
+  position: relative;
+}
+td.grid-square:after {
+  content: '';
+  display: block;
+  margin-top: 100%;
+}
+
+td.grid-square .cell-wrapper{
+	position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+	border: 3px solid transparent;
+}
+
+.grid-square.active > .cell-wrapper{
+	border-color: #FFDA00;
+}
+
+table {
+	width: 100%;
+	height: 100%;
+	border-collapse: collapse;
+  table-layout: fixed;
+  text-align: center;
+  vertical-align: middle;
+}
+
+tr, td {
+	padding: 0;
+}
+
+td.grid-square {
+    border: 1px solid gray;
+}
+
+td.grid-square:nth-child(3), td.grid-square:nth-child(6) {
+    border-right: 2px solid gray;
+}
+
+tr.grid-row:nth-child(3), tr.grid-row:nth-child(6) {
+    border-bottom: 2px solid gray;
+}
+
+.candidates {
+    font-size: 12px;
+}
+
+#game-area #focus-trap {
+    border: none;
+    height: 1px;
+    left: -1000px;
+    outline: none;
+    position: absolute;
+    width: 1px;
+}
