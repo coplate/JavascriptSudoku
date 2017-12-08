@@ -1,37 +1,51 @@
 class sudoku {
   constructor(divContainerId) {
-    this.container = document.getElementById(divContainerId);
-    this.focusTrap = document.createElement('input');
+
     this.cellGrid = [ [], [], [], [], [], [], [], [], [] ];
     this.activeSquare = null;
+
+    // build html structure and assemble hierarchy:
+    this.container = document.getElementById(divContainerId);
+    this.focusTrap = document.createElement('input');
     this.focusTrap.id = "focus-trap";
     this.container.appendChild(this.focusTrap);
-    var trapFocus = function() {this.focusTrap.focus();};
-    this.container.addEventListener('click', trapFocus.bind(this));
-    this.focusTrap.addEventListener('keypress', this.keypressHandler.bind(this));
-
-    this.width = this.container.offsetWidth;
-    this.container.style.height = this.width;
-
     var tbl = document.createElement('table');
+    this.container.appendChild(tbl);
     var tblBody = document.createElement('tbody');
-
+    tbl.appendChild(tblBody);
+    // construct sudoku grid
     for (var i = 0; i < 9; i++) {
         var row = document.createElement('tr');
         for (var j = 0; j < 9; j++) {
             this.cellGrid[i][j] = new gridSquare(i,j);
-            this.cellGrid[i][j].sizeFonts(this.width);
-            this.cellGrid[i][j].bindCandidateClickHandler(this.candidateClickHandler.bind(this,i,j));
-            this.cellGrid[i][j].bindSquareClickHandler(this.activateSquare.bind(this,i,j));
             row.appendChild(this.cellGrid[i][j].tblCell);
         }
-
         tblBody.appendChild(row);
-
         row.classList.add('grid-row');
     }
-    tbl.appendChild(tblBody);
-    this.container.appendChild(tbl);
+
+    // make container square and size fonts according to container width
+    this.container.style.height = this.container.offsetWidth;
+    for (var i = 0; i < 9; i++) {
+        for (var j = 0; j < 9; j++) {
+            this.cellGrid[i][j].sizeFonts(this.container.offsetWidth);
+        }
+    }
+
+    // attach event handlers
+    for (var i = 0; i < 9; i++) {
+        for (var j = 0; j < 9; j++) {
+            this.cellGrid[i][j].bindCandidateClickHandler(
+              this.candidateClickHandler.bind(this,i,j));
+            this.cellGrid[i][j].bindSquareClickHandler(
+              this.activateSquare.bind(this,i,j));
+        }
+    }
+    var trapFocus = function() {this.focusTrap.focus();};
+    this.container.addEventListener(
+      'click', trapFocus.bind(this));
+    this.focusTrap.addEventListener(
+      'keypress', this.keypressHandler.bind(this));
 
   }
 
@@ -45,7 +59,8 @@ class sudoku {
   keypressHandler(event) {
     if (/^[1-9]$/.test(event.key)) {
       if (this.activeSquare) {
-        this.cellGrid[this.activeSquare[0]][this.activeSquare[1]].enterGuess(event.key);
+        this.cellGrid[this.activeSquare[0]][this.activeSquare[1]]
+          .enterGuess(event.key);
       }
     } else if (event.key == 'Delete') {
       if (this.activeSquare) {
@@ -66,13 +81,19 @@ class gridSquare {
   constructor(i,j) {
     this.guess = null;
     this.candidates = [true,true,true,true,true,true,true,true,true];
-    this.tblCell = document.createElement('td');
-    var wrapper = document.createElement('div');
-    this.candidateTable = document.createElement('table');
-    var tblBody = document.createElement('tbody');
-    this.guessDiv = document.createElement('div');
     this.candidateCells = [];
 
+    // construct html elements and create hierarchy
+    this.tblCell = document.createElement('td');
+    var wrapper = document.createElement('div');
+    this.tblCell.appendChild(wrapper);
+    this.guessDiv = document.createElement('div');
+    wrapper.appendChild(this.guessDiv);
+    this.candidateTable = document.createElement('table');
+    wrapper.appendChild(this.candidateTable);
+    var tblBody = document.createElement('tbody');
+    this.candidateTable.appendChild(tblBody);
+    // construct candidate table
     for (var i = 0; i < 3; i++) {
         var row = document.createElement('tr');
         for (var j = 0; j < 3; j++) {
@@ -88,10 +109,7 @@ class gridSquare {
         tblBody.appendChild(row);
     }
 
-    this.candidateTable.appendChild(tblBody);
-    wrapper.appendChild(this.candidateTable);
-    wrapper.appendChild(this.guessDiv);
-    this.tblCell.appendChild(wrapper)
+
 
     wrapper.classList.add('cell-wrapper');
     this.candidateTable.classList.add('candidates');
