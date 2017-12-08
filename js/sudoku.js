@@ -1,46 +1,68 @@
-function generateSudokuTable() {
+class sudoku {
+  constructor(divContainerId) {
+    this.container = document.getElementById(divContainerId);
+    this.focusTrap = document.createElement('input');
+    this.cellGrid = [ [], [], [], [], [], [], [], [], [] ];
+
+    this.focusTrap.id = "focus-trap";
+
+
+    this.width = this.container.offsetWidth;
+    this.container.style.height = this.width;
+
     var tbl = document.createElement('table');
     var tblBody = document.createElement('tbody');
 
     for (var i = 0; i < 9; i++) {
         var row = document.createElement('tr');
         for (var j = 0; j < 9; j++) {
-            var cell = generateGridElement();
-            row.appendChild(cell);
-            cell.classList.add('grid-square');
-            cell.classList.add('C' + (j+1));
-            cell.classList.add('R' + (i+1));
-            cell.classList.add('B' + (Math.floor(j / 3) + 1 + 3 * Math.floor(i / 3)));
-            cell.id = 'C' + (j+1) + 'R' + (i+1);
+            this.cellGrid[i][j] = new gridSquare();
+            row.appendChild(this.cellGrid[i][j].HTMLElement);
         }
 
         tblBody.appendChild(row);
 
         row.classList.add('grid-row');
     }
-
     tbl.appendChild(tblBody);
-    tbl.classList.add('sudoku-grid')
-    return tbl;
+    this.container.appendChild(tbl);
+
+    $( ".guess" ).css({ fontSize: this.width*0.08 });
+    $( ".candidate" ).css({ fontSize: this.width*0.027 });
+  }
 }
 
-function generateGridElement() {
-    var parentCell = document.createElement('td');
+class gridSquare {
+  constructor() {
+    this.guess = null;
+    this.candidates = [1,2,3,4,5,6,7,8,9];
+    this.active = false;
+    this.HTMLInterface = new HTMLInterface();
+  }
+  get HTMLElement() {
+    return this.HTMLInterface.tblCell;
+  }
+}
+
+class HTMLInterface {
+  constructor() {
+    this.tblCell = document.createElement('td');
     var wrapper = document.createElement('div');
     var tbl = document.createElement('table');
     var tblBody = document.createElement('tbody');
-    var guess = document.createElement('div');
+    this.guess = document.createElement('div');
+    this.candidates = [];
 
     for (var i = 0; i < 3; i++) {
         var row = document.createElement('tr');
         for (var j = 0; j < 3; j++) {
-            var cell = document.createElement('td');
-            var candidate = document.createElement('div');
             var candidateNum = j + 1 + 3 * i;
-            candidate.innerHTML = candidateNum;
-            candidate.classList.add('N' + candidateNum);
+            var cell = document.createElement('td');
+            this.candidates[candidateNum] = document.createElement('div');
+            this.candidates[candidateNum].innerHTML = candidateNum;
+            this.candidates[candidateNum].classList.add('N' + candidateNum);
             cell.classList.add('candidate');
-            cell.appendChild(candidate);
+            cell.appendChild(this.candidates[candidateNum]);
             row.appendChild(cell);
         }
         tblBody.appendChild(row);
@@ -48,23 +70,16 @@ function generateGridElement() {
 
     tbl.appendChild(tblBody);
     wrapper.appendChild(tbl);
-    wrapper.appendChild(guess);
-    parentCell.appendChild(wrapper)
+    wrapper.appendChild(this.guess);
+    this.tblCell.appendChild(wrapper)
 
     wrapper.classList.add('cell-wrapper');
     tbl.classList.add('candidates');
-    guess.classList.add('guess');
 
-    return parentCell;
-}
+    this.guess.classList.add('guess');
+    this.tblCell.classList.add('grid-square');
 
-function placeTable(id) {
-  var body = document.getElementById(id);
-  var width = body.offsetWidth;
-  body.style.height = width
-  body.appendChild(generateSudokuTable());
-  $( ".guess" ).css({ fontSize: width*0.08 });
-  $( ".candidate" ).css({ fontSize: width*0.027 });
+  }
 }
 
 $(document).ready(function(){
