@@ -32,7 +32,7 @@ class sudoku {
         }
     }
 
-    // attach event handlers
+    // attach event handlers to grid squares
     for (var i = 0; i < 9; i++) {
         for (var j = 0; j < 9; j++) {
             this.cellGrid[i][j].bindCandidateClickHandler(
@@ -41,6 +41,8 @@ class sudoku {
               this.activateSquare.bind(this,i,j));
         }
     }
+
+    // attach event handlers to container and focustrap
     var trapFocus = function() {this.focusTrap.focus();};
     this.container.addEventListener(
       'click', trapFocus.bind(this));
@@ -54,6 +56,37 @@ class sudoku {
     for (var k = 0; k < neighborList.length; k++) {
       let [m,n] = neighborList[k];
       this.cellGrid[m][n].removeCandidate(guess);
+    }
+    for (var k = 0; k < 9; k++) {
+      this.checkRow(k);
+    }
+  }
+
+  checkRow(i) {
+    var candidates = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+    var guesses = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+    var conflictFlags = [];
+    for (var j = 0; j<9; j++) {
+      if (this.cellGrid[i][j].guess){
+        guesses[this.cellGrid[i][j].guess - 1]++;
+      } else {
+        for (var k = 0; k<9; k++){
+          candidates[k] += this.cellGrid[i][j].candidates[k];
+        }
+      }
+    }
+    for (var k = 0; k < 9; k++) {
+      if (guesses[k] >1) {conflictFlags.push(k)};
+    }
+    for (var j = 0; j<9; j++) {
+      let found = false;
+      if (this.cellGrid[i][j].guess){
+        for (var k = 0; k < conflictFlags.length; k++){
+          found = found ||
+            (this.cellGrid[i][j].guess - 1 == conflictFlags[k]);
+        }
+      }
+      this.cellGrid[i][j].setConflictFlag(found);
     }
   }
 
@@ -103,6 +136,9 @@ class sudoku {
         this.update(m, n, parseInt(event.key) - 1);
       } else if (event.key == 'Delete') {
         this.cellGrid[m][n].deleteGuess();
+        for (var k = 0; k < 9; k++) {
+          this.checkRow(k);
+        }
       }
     }
   }
@@ -133,6 +169,7 @@ class gridSquare {
     wrapper.appendChild(this.candidateTable);
     var tblBody = document.createElement('tbody');
     this.candidateTable.appendChild(tblBody);
+
     // construct candidate table
     for (var i = 0; i < 3; i++) {
         var row = document.createElement('tr');
@@ -159,7 +196,8 @@ class gridSquare {
 
   bindCandidateClickHandler(clickHandler) {
     for (var k = 0; k < 9; k++) {
-      this.candidateCells[k].addEventListener('click',clickHandler.bind(null,k));
+      this.candidateCells[k].addEventListener('click',
+        clickHandler.bind(null,k));
     }
   }
 
@@ -196,6 +234,14 @@ class gridSquare {
     this.guessDiv.innerHTML = '';
     this.guessDiv.hidden = true;
     this.candidateTable.hidden = false;
+  }
+
+  setConflictFlag(flag) {
+    if (flag) {
+      this.tblCell.classList.add('conflict');
+    } else {
+      this.tblCell.classList.remove('conflict');
+    }
   }
 
   sizeFonts(width) {

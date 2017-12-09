@@ -76,6 +76,10 @@ td.grid-square.active > .cell-wrapper{
 	border-color: #FFDA00;
 }
 
+td.grid-square.conflict > .cell-wrapper{
+	background-color: #FF6060;
+}
+
 tr.grid-row:nth-child(3), tr.grid-row:nth-child(6) {
     border-bottom: 2px solid gray;
 }
