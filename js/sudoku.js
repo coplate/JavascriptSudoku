@@ -57,21 +57,29 @@ class sudoku {
       let [m,n] = neighborList[k];
       this.cellGrid[m][n].removeCandidate(guess);
     }
-    for (var k = 0; k < 9; k++) {
-      this.checkRow(k);
+    this.checkGrid();
+  }
+
+  checkGrid() {
+    for (var k = 0; k<9; k++) {
+      this.checkGroup(this.listBoxGroup(k),'box');
+      this.checkGroup(this.listRowGroup(k),'row');
+      this.checkGroup(this.listColGroup(k),'col');
     }
   }
 
-  checkRow(i) {
+
+  checkGroup(group, groupType) {
     var candidates = [0, 0, 0, 0, 0, 0, 0, 0, 0];
     var guesses = [0, 0, 0, 0, 0, 0, 0, 0, 0];
     var conflictFlags = [];
     for (var j = 0; j<9; j++) {
-      if (this.cellGrid[i][j].guess){
-        guesses[this.cellGrid[i][j].guess - 1]++;
+      let [m,n] = group[j];
+      if (this.cellGrid[m][n].guess){
+        guesses[this.cellGrid[m][n].guess - 1]++;
       } else {
         for (var k = 0; k<9; k++){
-          candidates[k] += this.cellGrid[i][j].candidates[k];
+          candidates[k] += this.cellGrid[m][n].candidates[k];
         }
       }
     }
@@ -79,43 +87,52 @@ class sudoku {
       if (guesses[k] >1) {conflictFlags.push(k)};
     }
     for (var j = 0; j<9; j++) {
+      let [m,n] = group[j];
       let found = false;
-      if (this.cellGrid[i][j].guess){
+      if (this.cellGrid[m][n].guess){
         for (var k = 0; k < conflictFlags.length; k++){
           found = found ||
-            (this.cellGrid[i][j].guess - 1 == conflictFlags[k]);
+            (this.cellGrid[m][n].guess - 1 == conflictFlags[k]);
         }
       }
-      this.cellGrid[i][j].setConflictFlag(found);
+      this.cellGrid[m][n].setConflictFlag(found,groupType);
     }
+  }
+
+  listBoxGroup(k) {
+    var group = [];
+    var mLow = (k % 3) * 3;
+    var nLow = Math.floor(k/3) * 3;
+    for (var m = mLow; m < mLow + 3; m++) {
+      for (var n = nLow; n < nLow + 3; n++) {
+        group.push([m,n]);
+      }
+    }
+    return group;
+  }
+
+  listColGroup(j) {
+    var group = [];
+    for (var m = 0; m<9; m++) {
+      group.push([m,j]);
+    }
+    return group;
+  }
+
+  listRowGroup(i) {
+    var group = [];
+    for (var n = 0; n<9; n++) {
+      group.push([i,n]);
+    }
+    return group;
   }
 
   neighbors(i,j) {
     var neighborList = [];
-    // box neighbors
-    var mLow = Math.floor(i/3) * 3;
-    var nLow = Math.floor(j/3) * 3;
-    for (var m = mLow; m < mLow + 3; m++) {
-      if (m != i) {
-        for (var n = nLow; n < nLow + 3; n++) {
-          if (n != j) {
-            neighborList.push([m,n]);
-          }
-        }
-      }
-    }
-    // col neighbors
-    for (var m = 0; m<9; m++) {
-      if (m != i) {
-        neighborList.push([m,j]);
-      }
-    }
-    // row neighbors
-    for (var n = 0; n<9; n++) {
-      if (n != j) {
-        neighborList.push([i,n]);
-      }
-    }
+    neighborList = neighborList.concat(
+      this.listBoxGroup(Math.floor(i/3) + Math.floor(j/3) * 3));
+    neighborList = neighborList.concat(this.listRowGroup(i));
+    neighborList = neighborList.concat(this.listColGroup(j));
     return neighborList;
   }
 
@@ -136,9 +153,7 @@ class sudoku {
         this.update(m, n, parseInt(event.key) - 1);
       } else if (event.key == 'Delete') {
         this.cellGrid[m][n].deleteGuess();
-        for (var k = 0; k < 9; k++) {
-          this.checkRow(k);
-        }
+        this.checkGrid();
       }
     }
   }
@@ -236,11 +251,11 @@ class gridSquare {
     this.candidateTable.hidden = false;
   }
 
-  setConflictFlag(flag) {
+  setConflictFlag(flag,groupType) {
     if (flag) {
-      this.tblCell.classList.add('conflict');
+      this.tblCell.classList.add(groupType + '-conflict');
     } else {
-      this.tblCell.classList.remove('conflict');
+      this.tblCell.classList.remove(groupType + '-conflict');
     }
   }
 

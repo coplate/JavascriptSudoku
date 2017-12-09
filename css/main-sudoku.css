@@ -76,7 +76,9 @@ td.grid-square.active > .cell-wrapper{
 	border-color: #FFDA00;
 }
 
-td.grid-square.conflict > .cell-wrapper{
+td.grid-square.box-conflict > .cell-wrapper,
+td.grid-square.row-conflict > .cell-wrapper,
+td.grid-square.col-conflict > .cell-wrapper{
 	background-color: #FF6060;
 }
 
