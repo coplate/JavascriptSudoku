@@ -49,6 +49,31 @@ class sudoku {
 
   }
 
+  update(i,j,guess) {
+    // update box candidates
+    var nLow = Math.floor(i/3) * 3;
+    var mLow = Math.floor(j/3) * 3;
+    for (var n = nLow; n < nLow + 3; n++) {
+      for (var m = mLow; m < mLow + 3; m++) {
+        if (n != i & m != j) {
+          this.cellGrid[n][m].removeCandidate(guess);
+        }
+      }
+    }
+    // update col candidates
+    for (var n = 0; n<9; n++) {
+      if (n != i) {
+        this.cellGrid[n][j].removeCandidate(guess);
+      }
+    }
+    // update row candidates
+    for (var n = 0; n<9; n++) {
+      if (n != j) {
+        this.cellGrid[i][n].removeCandidate(guess);
+      }
+    }
+  }
+
   candidateClickHandler(i,j,k) {
     if (this.activeSquare) {
       if (this.activeSquare[0] == i & this.activeSquare[1] == j ) {
@@ -56,11 +81,14 @@ class sudoku {
       }
     }
   }
+
   keypressHandler(event) {
     if (/^[1-9]$/.test(event.key)) {
       if (this.activeSquare) {
         this.cellGrid[this.activeSquare[0]][this.activeSquare[1]]
           .enterGuess(event.key);
+        this.update(this.activeSquare[0],this.activeSquare[1],
+          parseInt(event.key)-1);
       }
     } else if (event.key == 'Delete') {
       if (this.activeSquare) {
@@ -68,6 +96,7 @@ class sudoku {
       }
     }
   }
+
   activateSquare(i,j) {
     if (this.activeSquare) {
       this.cellGrid[this.activeSquare[0]][this.activeSquare[1]].deactivate();
@@ -109,46 +138,56 @@ class gridSquare {
         tblBody.appendChild(row);
     }
 
-
-
+    // add css classes for styling
     wrapper.classList.add('cell-wrapper');
     this.candidateTable.classList.add('candidates');
     this.guessDiv.classList.add('guess');
     this.tblCell.classList.add('grid-square');
 
   }
+
   bindCandidateClickHandler(clickHandler) {
     for (var k = 0; k < 9; k++) {
       this.candidateCells[k].addEventListener('click',clickHandler.bind(null,k));
     }
   }
+
   bindSquareClickHandler(clickHandler) {
     this.tblCell.addEventListener('click',clickHandler);
   }
   activate() {
     this.tblCell.classList.add('active');
   }
+
   deactivate() {
     this.tblCell.classList.remove('active');
   }
+
   toggleCandidate(k) {
     this.candidates[k] = !this.candidates[k];
     this.candidateCells[k].childNodes[0].hidden = !this.candidates[k];
   }
+
+  removeCandidate(k) {
+    this.candidates[k] = false;
+    this.candidateCells[k].childNodes[0].hidden = true;
+  }
+
   enterGuess(k) {
     this.guess = parseInt(k);
     this.guessDiv.innerHTML = k;
     this.candidateTable.hidden = true;
     this.guessDiv.hidden = false;
   }
+
   deleteGuess() {
     this.guess = null;
     this.guessDiv.innerHTML = '';
     this.guessDiv.hidden = true;
     this.candidateTable.hidden = false;
   }
+
   sizeFonts(width) {
-    console.log(width);
     this.guessDiv.style.fontSize = (width*0.08) + 'px';
     this.candidateTable.style.fontSize = (width*0.027) + 'px';
   }
