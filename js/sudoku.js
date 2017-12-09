@@ -50,56 +50,67 @@ class sudoku {
   }
 
   update(i,j,guess) {
-    // update box candidates
-    var nLow = Math.floor(i/3) * 3;
-    var mLow = Math.floor(j/3) * 3;
-    for (var n = nLow; n < nLow + 3; n++) {
-      for (var m = mLow; m < mLow + 3; m++) {
-        if (n != i & m != j) {
-          this.cellGrid[n][m].removeCandidate(guess);
+    var neighborList = this.neighbors(i,j);
+    for (var k = 0; k < neighborList.length; k++) {
+      let [m,n] = neighborList[k];
+      this.cellGrid[m][n].removeCandidate(guess);
+    }
+  }
+
+  neighbors(i,j) {
+    var neighborList = [];
+    // box neighbors
+    var mLow = Math.floor(i/3) * 3;
+    var nLow = Math.floor(j/3) * 3;
+    for (var m = mLow; m < mLow + 3; m++) {
+      if (m != i) {
+        for (var n = nLow; n < nLow + 3; n++) {
+          if (n != j) {
+            neighborList.push([m,n]);
+          }
         }
       }
     }
-    // update col candidates
-    for (var n = 0; n<9; n++) {
-      if (n != i) {
-        this.cellGrid[n][j].removeCandidate(guess);
+    // col neighbors
+    for (var m = 0; m<9; m++) {
+      if (m != i) {
+        neighborList.push([m,j]);
       }
     }
-    // update row candidates
+    // row neighbors
     for (var n = 0; n<9; n++) {
       if (n != j) {
-        this.cellGrid[i][n].removeCandidate(guess);
+        neighborList.push([i,n]);
       }
     }
+    return neighborList;
   }
 
   candidateClickHandler(i,j,k) {
     if (this.activeSquare) {
-      if (this.activeSquare[0] == i & this.activeSquare[1] == j ) {
+      let [m,n] = this.activeSquare;
+      if (m == i & n == j ) {
         this.cellGrid[i][j].toggleCandidate(k);
       }
     }
   }
 
   keypressHandler(event) {
-    if (/^[1-9]$/.test(event.key)) {
-      if (this.activeSquare) {
-        this.cellGrid[this.activeSquare[0]][this.activeSquare[1]]
-          .enterGuess(event.key);
-        this.update(this.activeSquare[0],this.activeSquare[1],
-          parseInt(event.key)-1);
-      }
-    } else if (event.key == 'Delete') {
-      if (this.activeSquare) {
-        this.cellGrid[this.activeSquare[0]][this.activeSquare[1]].deleteGuess();
+    if (this.activeSquare) {
+      let [m,n] = this.activeSquare;
+      if (/^[1-9]$/.test(event.key)) {
+        this.cellGrid[m][n].enterGuess(event.key);
+        this.update(m, n, parseInt(event.key) - 1);
+      } else if (event.key == 'Delete') {
+        this.cellGrid[m][n].deleteGuess();
       }
     }
   }
 
   activateSquare(i,j) {
     if (this.activeSquare) {
-      this.cellGrid[this.activeSquare[0]][this.activeSquare[1]].deactivate();
+      let [m,n] = this.activeSquare;
+      this.cellGrid[m][n].deactivate();
     }
     this.cellGrid[i][j].activate();
     this.activeSquare = [i,j];
