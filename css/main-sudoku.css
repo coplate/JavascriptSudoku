@@ -77,6 +77,10 @@ td.grid-square.active > .cell-wrapper{
 	border-color: #FFDA00;
 }
 
+td.grid-square.prefilled > .cell-wrapper{
+	background-color: #f5f5f5;
+}
+
 td.grid-square.box-conflict > .cell-wrapper,
 td.grid-square.row-conflict > .cell-wrapper,
 td.grid-square.col-conflict > .cell-wrapper{

@@ -44,8 +44,37 @@ class sudoku {
     this.focusTrap.addEventListener(
       'keypress', this.keypressHandler.bind(this));
 
+    var xhttp = new XMLHttpRequest();
+    /*xhttp.onreadystatechange = function() {
+      if (this.readyState == 4 && this.status == 200) {
+        console.log(JSON.parse(this.responseText));
+      }
+    };*/
+    xhttp.onreadystatechange = this.loadPuzzle.bind(this,xhttp);
+    xhttp.open("GET", "puzzle.txt", true);
+    xhttp.send();
+
     // attach wrapper to html document
     this.container.appendChild(this.wrapper);
+  }
+
+  loadPuzzle(xhttp) {
+    if (xhttp.readyState == 4 && xhttp.status == 200) {
+      let board = JSON.parse(xhttp.responseText);
+      for (var i = 0; i < 9; i++) {
+        for (var j = 0; j < 9; j++) {
+          if (board[i][j]) {
+            this.cellGrid[i][j].enterGuess(board[i][j], true);
+          }
+        }
+      }
+      for (var i = 0; i < 9; i++) {
+        for (var j = 0; j < 9; j++) {
+          this.updateCandidates(i, j);
+        }
+      }
+      this.checkGrid();
+    }
   }
 
   eliminateNeighborCandidates(i,j,guess) {
@@ -193,8 +222,18 @@ class sudoku {
         this.cellGrid[m][n].deleteGuess();
         this.updateNeighborCandidates(m, n);
         this.checkGrid();
+      } else if (event.key == 'd') {
+        this.downloadGrid();
       }
     }
+  }
+
+  downloadGrid() {
+    console.log(JSON.stringify(this.cellGrid.map(function(gridRow) {
+        return gridRow.map(function (gridSquare) {
+          return gridSquare.guess;
+        })
+      })));
   }
 
   activateSquare(i,j) {
@@ -212,6 +251,7 @@ class gridSquare {
     this.guess = null;
     this.candidates = [true,true,true,true,true,true,true,true,true];
     this.candidateCells = [];
+    this.prefilled = false;
 
     // construct html elements and create hierarchy
     this.tblCell = document.createElement('td');
@@ -281,18 +321,26 @@ class gridSquare {
     this.candidateCells[k].childNodes[0].hidden = false;
   }
 
-  enterGuess(k) {
-    this.guess = parseInt(k);
-    this.guessDiv.innerHTML = k;
-    this.candidateTable.hidden = true;
-    this.guessDiv.hidden = false;
+  enterGuess(k,prefilled = false) {
+    if (!this.prefilled) {
+      this.guess = parseInt(k);
+      this.guessDiv.innerHTML = k;
+      this.candidateTable.hidden = true;
+      this.guessDiv.hidden = false;
+      if (prefilled) {
+        this.prefilled = prefilled;
+        this.tblCell.classList.add('prefilled');
+      }
+    }
   }
 
   deleteGuess() {
-    this.guess = null;
-    this.guessDiv.innerHTML = '';
-    this.guessDiv.hidden = true;
-    this.candidateTable.hidden = false;
+    if (!this.prefilled) {
+      this.guess = null;
+      this.guessDiv.innerHTML = '';
+      this.guessDiv.hidden = true;
+      this.candidateTable.hidden = false;
+    }
   }
 
   setSolveFlag(k) {
