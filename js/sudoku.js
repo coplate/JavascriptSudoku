@@ -98,8 +98,17 @@ class sudoku {
       if (this.cellGrid[m][n].guess){
         guesses[this.cellGrid[m][n].guess - 1]++;
       } else {
+        var countSquare = 0; // count for candidates in single square
+        var candidateID = null;
         for (var k = 0; k<9; k++){
-          candidates[k] += this.cellGrid[m][n].candidates[k];
+          if (this.cellGrid[m][n].candidates[k]) {
+            countSquare += 1;
+            candidates[k] += 1;
+            candidateID = k;
+          }
+        }
+        if (countSquare == 1) {
+          this.cellGrid[m][n].setSolveFlag(candidateID);
         }
       }
     }
@@ -169,6 +178,7 @@ class sudoku {
       let [m,n] = this.activeSquare;
       if (m == i & n == j ) {
         this.cellGrid[i][j].toggleCandidate(k);
+        this.checkGrid();
       }
     }
   }
