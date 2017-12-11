@@ -48,13 +48,35 @@ class sudoku {
     this.container.appendChild(this.wrapper);
   }
 
-  update(i,j,guess) {
+  eliminateNeighborCandidates(i,j,guess) {
     var neighborList = this.neighbors(i,j);
     for (var k = 0; k < neighborList.length; k++) {
       let [m,n] = neighborList[k];
       this.cellGrid[m][n].removeCandidate(guess);
     }
     this.checkGrid();
+  }
+
+  updateNeighborCandidates(i,j,guess) {
+    var neighborList = this.neighbors(i,j);
+    for (var k = 0; k < neighborList.length; k++) {
+      let [m,n] = neighborList[k];
+      this.updateCandidates(m, n);
+    }
+    this.checkGrid();
+  }
+
+  updateCandidates(i,j) {
+    var neighborList = this.neighbors(i,j);
+    for (var k = 0; k < 9; k++) {
+      this.cellGrid[i][j].addCandidate(k);
+    }
+    for (var k = 0; k < neighborList.length; k++) {
+      let [m,n] = neighborList[k];
+      if (this.cellGrid[m][n].guess) {
+        this.cellGrid[i][j].removeCandidate(this.cellGrid[m][n].guess - 1);
+      }
+    }
   }
 
   checkGrid() {
@@ -156,9 +178,10 @@ class sudoku {
       let [m,n] = this.activeSquare;
       if (/^[1-9]$/.test(event.key)) {
         this.cellGrid[m][n].enterGuess(event.key);
-        this.update(m, n, parseInt(event.key) - 1);
+        this.eliminateNeighborCandidates(m, n, parseInt(event.key) - 1);
       } else if (event.key == 'Delete') {
         this.cellGrid[m][n].deleteGuess();
+        this.updateNeighborCandidates(m, n);
         this.checkGrid();
       }
     }
@@ -241,6 +264,11 @@ class gridSquare {
   removeCandidate(k) {
     this.candidates[k] = false;
     this.candidateCells[k].childNodes[0].hidden = true;
+  }
+
+  addCandidate(k) {
+    this.candidates[k] = true;
+    this.candidateCells[k].childNodes[0].hidden = false;
   }
 
   enterGuess(k) {
