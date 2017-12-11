@@ -6,40 +6,35 @@ class sudoku {
 
     // build html structure and assemble hierarchy:
     this.container = document.getElementById(divContainerId);
+    // make container square
+    this.container.style.height = this.container.offsetWidth;
+
+    this.wrapper = document.createElement('div');
+
     this.focusTrap = document.createElement('input');
     this.focusTrap.id = "focus-trap";
-    this.container.appendChild(this.focusTrap);
+    this.wrapper.appendChild(this.focusTrap);
     var tbl = document.createElement('table');
-    this.container.appendChild(tbl);
+    this.wrapper.appendChild(tbl);
     var tblBody = document.createElement('tbody');
     tbl.appendChild(tblBody);
     // construct sudoku grid
     for (var i = 0; i < 9; i++) {
         var row = document.createElement('tr');
         for (var j = 0; j < 9; j++) {
+            // build and attach grid square
             this.cellGrid[i][j] = new gridSquare(i,j);
             row.appendChild(this.cellGrid[i][j].tblCell);
-        }
-        tblBody.appendChild(row);
-        row.classList.add('grid-row');
-    }
-
-    // make container square and size fonts according to container width
-    this.container.style.height = this.container.offsetWidth;
-    for (var i = 0; i < 9; i++) {
-        for (var j = 0; j < 9; j++) {
+            // size fonts according to container width
             this.cellGrid[i][j].sizeFonts(this.container.offsetWidth);
-        }
-    }
-
-    // attach event handlers to grid squares
-    for (var i = 0; i < 9; i++) {
-        for (var j = 0; j < 9; j++) {
+            // attach event handlers to grid squares
             this.cellGrid[i][j].bindCandidateClickHandler(
               this.candidateClickHandler.bind(this,i,j));
             this.cellGrid[i][j].bindSquareClickHandler(
               this.activateSquare.bind(this,i,j));
         }
+        tblBody.appendChild(row);
+        row.classList.add('grid-row');
     }
 
     // attach event handlers to container and focustrap
@@ -49,6 +44,8 @@ class sudoku {
     this.focusTrap.addEventListener(
       'keypress', this.keypressHandler.bind(this));
 
+    // attach wrapper to html document
+    this.container.appendChild(this.wrapper);
   }
 
   update(i,j,guess) {
@@ -68,11 +65,12 @@ class sudoku {
     }
   }
 
-
+  // check for conflict between guesses and lone candidates for solving
   checkGroup(group, groupType) {
     var candidates = [0, 0, 0, 0, 0, 0, 0, 0, 0];
     var guesses = [0, 0, 0, 0, 0, 0, 0, 0, 0];
     var conflictFlags = [];
+    var solveFlags = [];
     for (var j = 0; j<9; j++) {
       let [m,n] = group[j];
       if (this.cellGrid[m][n].guess){
@@ -84,15 +82,23 @@ class sudoku {
       }
     }
     for (var k = 0; k < 9; k++) {
-      if (guesses[k] >1) {conflictFlags.push(k)};
+      if (guesses[k] > 1) {conflictFlags.push(k)};
+      if (candidates[k] == 1) {solveFlags.push(k)};
     }
     for (var j = 0; j<9; j++) {
       let [m,n] = group[j];
       let found = false;
+      let solvable = false;
       if (this.cellGrid[m][n].guess){
         for (var k = 0; k < conflictFlags.length; k++){
           found = found ||
             (this.cellGrid[m][n].guess - 1 == conflictFlags[k]);
+        }
+      } else {
+        for (var k = 0; k < solveFlags.length; k++){
+          if (this.cellGrid[m][n].candidates[solveFlags[k]]) {
+            this.cellGrid[m][n].setSolveFlag(solveFlags[k]);
+          }
         }
       }
       this.cellGrid[m][n].setConflictFlag(found,groupType);
@@ -249,6 +255,10 @@ class gridSquare {
     this.guessDiv.innerHTML = '';
     this.guessDiv.hidden = true;
     this.candidateTable.hidden = false;
+  }
+
+  setSolveFlag(k) {
+    this.candidateCells[k].classList.add('solve-flag');
   }
 
   setConflictFlag(flag,groupType) {
