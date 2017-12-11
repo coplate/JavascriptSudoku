@@ -54,8 +54,6 @@ class sudoku {
     xhttp.open("GET", "puzzle.txt", true);
     xhttp.send();
 
-    // attach wrapper to html document
-    this.container.appendChild(this.wrapper);
   }
 
   loadPuzzle(xhttp) {
@@ -75,6 +73,8 @@ class sudoku {
       }
       this.checkGrid();
     }
+    // attach wrapper to html document
+    this.container.appendChild(this.wrapper);
   }
 
   eliminateNeighborCandidates(i,j,guess) {
