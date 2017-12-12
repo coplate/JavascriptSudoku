@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css?family=Open+Sans:300,400');
 
 body {
 	margin:0px;
@@ -5,12 +6,15 @@ body {
 }
 
 #game-area {
-  width: 500px;
+  width: 750px;
 	margin: 50px;
 	padding: 0px;
 }
 
 #game-area * {
+	font-family: sans-serif;
+	font-family: 'Open Sans', sans-serif;
+	font-weight: 300;
   box-sizing: border-box;
   cursor: default;
   -webkit-touch-callout: none; /* iOS Safari */
