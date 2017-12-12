@@ -6,22 +6,20 @@ body {
 
 #game-area {
   width: 500px;
-	height: 500px;
 	margin: 50px;
 	padding: 0px;
-	border: 2px solid black;
 }
 
 #game-area * {
-    box-sizing: border-box;
-    cursor: default;
-    -webkit-touch-callout: none; /* iOS Safari */
-    -webkit-user-select: none; /* Safari */
-    -khtml-user-select: none; /* Konqueror HTML */
-    -moz-user-select: none; /* Firefox */
-    -ms-user-select: none; /* Internet Explorer/Edge */
-    user-select: none; /* Non-prefixed version, currently
-                                  supported by Chrome and Opera */
+  box-sizing: border-box;
+  cursor: default;
+  -webkit-touch-callout: none; /* iOS Safari */
+  -webkit-user-select: none; /* Safari */
+  -khtml-user-select: none; /* Konqueror HTML */
+  -moz-user-select: none; /* Firefox */
+  -ms-user-select: none; /* Internet Explorer/Edge */
+  user-select: none; /* Non-prefixed version, currently
+                                supported by Chrome and Opera */
 }
 
 table {
@@ -38,11 +36,11 @@ tr, td {
 }
 
 td.grid-square {
-    border: 1px solid gray;
+  border: 1px solid gray;
 }
 
 td.grid-square:nth-child(3), td.grid-square:nth-child(6) {
-    border-right: 2px solid gray;
+  border-right: 2px solid gray;
 }
 
 td.grid-square {
@@ -91,7 +89,10 @@ tr.grid-row:nth-child(3), tr.grid-row:nth-child(6) {
     border-bottom: 2px solid gray;
 }
 
-td.candidate.solve-flag {
+td.candidate.box-solve-flag,
+td.candidate.row-solve-flag,
+td.candidate.col-solve-flag,
+td.candidate.cell-solve-flag {
     background-color: lightblue;
     color: white;
 }

@@ -6,8 +6,6 @@ class sudoku {
 
     // build html structure and assemble hierarchy:
     this.container = document.getElementById(divContainerId);
-    // make container square
-    this.container.style.height = this.container.offsetWidth;
 
     this.wrapper = document.createElement('div');
 
@@ -136,8 +134,9 @@ class sudoku {
             candidateID = k;
           }
         }
+        this.cellGrid[m][n].clearSolveFlag('cell');
         if (countSquare == 1) {
-          this.cellGrid[m][n].setSolveFlag(candidateID);
+          this.cellGrid[m][n].setSolveFlag(candidateID,'cell');
         }
       }
     }
@@ -155,9 +154,10 @@ class sudoku {
             (this.cellGrid[m][n].guess - 1 == conflictFlags[k]);
         }
       } else {
+        this.cellGrid[m][n].clearSolveFlag(groupType);
         for (var k = 0; k < solveFlags.length; k++){
           if (this.cellGrid[m][n].candidates[solveFlags[k]]) {
-            this.cellGrid[m][n].setSolveFlag(solveFlags[k]);
+            this.cellGrid[m][n].setSolveFlag(solveFlags[k],groupType);
           }
         }
       }
@@ -343,8 +343,14 @@ class gridSquare {
     }
   }
 
-  setSolveFlag(k) {
-    this.candidateCells[k].classList.add('solve-flag');
+  setSolveFlag(k,groupType) {
+    this.candidateCells[k].classList.add(groupType + '-solve-flag');
+  }
+
+  clearSolveFlag(groupType) {
+    for (var k = 0; k < 9; k++) {
+      this.candidateCells[k].classList.remove(groupType + '-solve-flag');
+    }
   }
 
   setConflictFlag(flag,groupType) {
