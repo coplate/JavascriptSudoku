@@ -1,8 +1,11 @@
-class gridSquareWrapper {
+class GridSquareWrapper {
   constructor(divElement, parent) {
     this.divElement = divElement;
     this.parent = parent;
     this.divElement.addEventListener('click',(this.activate).bind(this));
+    this.candidateWrappers = [];
+    this.enterGuessFcn = null;
+    this.deleteGuessFcn = null;
   }
 
   activate() {
@@ -13,17 +16,57 @@ class gridSquareWrapper {
     this.parent.activeGridSquare = this;
     this.divElement.classList.add('active');
   }
-}
 
-class candidateSquareWrapper {
-  constructor(divElement) {
-    this.divElement = divElement;
-    this.clickFunction = function() {console.log('Click!', this.divElement.id);};
-    this.divElement.addEventListener('click',(this.clickHandler).bind(this));
-
+  // controller
+  enterGuess(k) {
+    if (this.enterGuessFcn) {
+      this.enterGuessFcn(k);
+    } else {
+      console.log('EnterGuess not bound: ', k - 1);
+      this.showGuess(k - 1);
+    }
   }
 
-  set hidden(val) {
+  deleteGuess() {
+    if (this.deleteGuessFcn) {
+      this.deleteGuessFcn();
+    } else {
+      console.log('DeleteGuess not bound');
+      this.hideGuess();
+    }
+  }
+
+  // view
+  showGuess(k) {
+    this.divElement.childNodes[0].innerHTML = (k + 1);
+    this.divElement.childNodes[1].hidden = true;
+    this.divElement.childNodes[0].hidden = false;
+  }
+
+  hideGuess(k) {
+    this.divElement.childNodes[0].hidden = true;
+    this.divElement.childNodes[1].hidden = false;
+    this.divElement.childNodes[0].innerHTML = '';
+  }
+
+  setFlag(flag,val) {
+    if (val) {
+      this.divElement.classList.add(flag);
+    } else {
+      this.divElement.classList.remove(flag);
+    }
+  }
+}
+
+class CandidateWrapper {
+  constructor(divElement,parent) {
+    this.divElement = divElement;
+    this.parent = parent;
+    this.clickFunction = function() {console.log('clickFunction not set!', this.divElement.id);};
+    this.divElement.addEventListener('click',(this.clickHandler).bind(this));
+  }
+
+  setHidden(val) {
     this.divElement.hidden = val;
   }
 
@@ -37,7 +80,10 @@ class candidateSquareWrapper {
 
   clickHandler() {
     if (this.clickFunction) {
-      this.clickFunction();
+      if (this.parent.parent.activeGridSquare == this.parent){
+        // if parent square is the activeGridSquare
+        this.clickFunction();
+      }
     }
   }
 
@@ -47,7 +93,6 @@ class HTMLGrid {
   constructor(width) {
     this.activeGridSquare = null;
     this.gridSquareWrappers = [];
-    this.candidateSquareWrappers = [];
 
     this.wrapper = document.createElement('div');
 
@@ -68,7 +113,8 @@ class HTMLGrid {
             var wrapper = document.createElement('div');
             tblCell.appendChild(wrapper);
 
-            this.gridSquareWrappers.push(new gridSquareWrapper(wrapper,this));
+            var gridSquareWrapper = new GridSquareWrapper(wrapper,this)
+            this.gridSquareWrappers.push(gridSquareWrapper);
 
             var guessDiv = document.createElement('div');
             wrapper.appendChild(guessDiv);
@@ -88,13 +134,13 @@ class HTMLGrid {
                     var candidateNum = l + 3 * k;
                     var candidateCell = document.createElement('td');
                     var candidateWrapper = document.createElement('div');
-                    this.candidateSquareWrappers.push(
-                        new candidateSquareWrapper(candidateWrapper));
+                    gridSquareWrapper.candidateWrappers.push(
+                      new CandidateWrapper(candidateWrapper,gridSquareWrapper));
                     candidateWrapper.innerHTML = candidateNum + 1;
                     candidateWrapper.id =
                                   'R' + i + 'C' + j + 'N' + candidateNum;
                     candidateCell.classList.add('candidate');
-                    candidateWrapper.classList.add('candidateWraper');
+                    candidateWrapper.classList.add('candidate-wrapper');
                     candidateCell.appendChild(candidateWrapper);
                     innerRow.appendChild(candidateCell);
 
@@ -118,87 +164,153 @@ class HTMLGrid {
     var trapFocus = function() {this.focusTrap.focus();};
     this.wrapper.addEventListener(
       'click', trapFocus.bind(this));
-    //this.focusTrap.addEventListener(
-    //  'keypress', this.keypressHandler.bind(this));
-
-  }
-}
-
-class sudoku {
-  constructor(divContainerId) {
-
-    // build html structure and assemble hierarchy:
-    this.container = document.getElementById(divContainerId);
-    var grid = new HTMLGrid();
-    this.container.appendChild(grid.wrapper);
-/*
-    this.wrapper = document.createElement('div');
-
-    this.focusTrap = document.createElement('input');
-    this.focusTrap.id = "focus-trap";
-    this.wrapper.appendChild(this.focusTrap);
-    var tbl = document.createElement('table');
-    this.wrapper.appendChild(tbl);
-    var tblBody = document.createElement('tbody');
-    tbl.appendChild(tblBody);
-    // construct sudoku grid
-    for (var i = 0; i < 9; i++) {
-        var row = document.createElement('tr');
-        for (var j = 0; j < 9; j++) {
-            // build and attach grid square
-            this.cellGrid[i][j] = new gridSquare(i,j);
-            row.appendChild(this.cellGrid[i][j].tblCell);
-            // size fonts according to container width
-            this.cellGrid[i][j].sizeFonts(this.container.offsetWidth);
-            // attach event handlers to grid squares
-            this.cellGrid[i][j].bindCandidateClickHandler(
-              this.candidateClickHandler.bind(this,i,j));
-            this.cellGrid[i][j].bindSquareClickHandler(
-              this.activateSquare.bind(this,i,j));
-        }
-        tblBody.appendChild(row);
-        row.classList.add('grid-row');
-    }
-
-    // attach event handlers to container and focustrap
-    var trapFocus = function() {this.focusTrap.focus();};
-    this.container.addEventListener(
-      'click', trapFocus.bind(this));
     this.focusTrap.addEventListener(
       'keypress', this.keypressHandler.bind(this));
 
-    var xhttp = new XMLHttpRequest();
-    /*xhttp.onreadystatechange = function() {
-      if (this.readyState == 4 && this.status == 200) {
-        console.log(JSON.parse(this.responseText));
-      }
-    };
-    xhttp.onreadystatechange = this.loadPuzzle.bind(this,xhttp);
-    xhttp.open("GET", "puzzle.txt", true);
-    xhttp.send();*/
-
   }
 
-  loadPuzzle(xhttp) {
-    if (xhttp.readyState == 4 && xhttp.status == 200) {
-      let board = JSON.parse(xhttp.responseText);
-      for (var i = 0; i < 9; i++) {
-        for (var j = 0; j < 9; j++) {
-          if (board[i][j]) {
-            this.cellGrid[i][j].enterGuess(board[i][j], true);
-          }
-        }
+  keypressHandler(event) {
+    if (this.activeGridSquare) {
+      if (/^[1-9]$/.test(event.key)) {
+        this.activeGridSquare.enterGuess(parseInt(event.key));
+      } else if (event.key == 'Delete') {
+        this.activeGridSquare.deleteGuess();
       }
-      for (var i = 0; i < 9; i++) {
-        for (var j = 0; j < 9; j++) {
-          this.updateCandidates(i, j);
-        }
-      }
-      this.checkGrid();
     }
-    // attach wrapper to html document
-    this.container.appendChild(this.wrapper);
   }
+}
+
+class Candidate {
+  constructor(parent) {
+    this.parent = parent;
+    this.valid = true;
+    this.constraintList = [];
+    this.setFlagFcn = null;
+    this.setHiddenFcn = null;
+  }
+
+  bindFcns(candidateWrapper) {
+    this.setHiddenFcn = candidateWrapper.setHidden.bind(candidateWrapper);
+    this.setFlagFcn = candidateWrapper.setFlag.bind(candidateWrapper);
+    candidateWrapper.clickFunction = this.toggle.bind(this);
+  }
+
+  toggle () {
+    console.log('Toggle!');
+  }
+}
+
+class GridSquare {
+  constructor() {
+    this.prefilled = false;
+    this.candidateList = [];
+    this.showGuessFcn = null;
+    this.hideGuessFcn = null;
+    this.setFlagFcn = null;
+  }
+
+  bindFcns(GridSquareWrapper) {
+    this.showguessFcn = GridSquareWrapper.showGuess.bind(GridSquareWrapper);
+    this.hideGuessFcn = GridSquareWrapper.hideGuess.bind(GridSquareWrapper);
+    this.setFlagFcn = GridSquareWrapper.setFlag.bind(GridSquareWrapper);
+    GridSquareWrapper.enterGuessFcn = this.enterGuess.bind(this);
+    GridSquareWrapper.deleteGuessFcn = this.deleteGuess.bind(this);
+  }
+
+  enterGuess(k) {
+    console.log('EnterGuess bound ', k);
+  }
+  deleteGuess() {
+    console.log('DeleteGuess bound');
+  }
+}
+
+class Constraint {
+  constructor(type) {
+    this.candidateList = [];
+    this.type = type;
+  }
+}
+
+class LogicGrid {
+  constructor() {
+    this.constraintList = [];
+    this.squareList = [];
+    var boxConstraints = [];
+    var rowConstraints = [];
+    var colConstraints = [];
+    var cellConstraints = [];
+
+    // create constraints
+    for (var i = 0; i < 9; i++) {
+      boxConstraints[i] = [];
+      rowConstraints[i] = [];
+      colConstraints[i] = [];
+      cellConstraints[i] = [];
+      for (var j = 0; j < 9; j++) {
+        boxConstraints[i][j] = new Constraint('box');
+        rowConstraints[i][j] = new Constraint('row');
+        colConstraints[i][j] = new Constraint('col');
+        cellConstraints[i][j] = new Constraint('cell');
+        this.constraintList.push(boxConstraints[i][j]);
+        this.constraintList.push(rowConstraints[i][j]);
+        this.constraintList.push(colConstraints[i][j]);
+        this.constraintList.push(cellConstraints[i][j]);
+      }
+    }
+
+    // construct outer sudoku grid table
+    for (var i = 0; i < 9; i++) {
+      for (var j = 0; j < 9; j++) {
+        // construct inner candidate table
+        var gridSquare = new GridSquare();
+        this.squareList.push(gridSquare);
+        for (var k = 0; k < 9; k++) {
+          // create candidate and add to corresponding square
+          var candidate = new Candidate();
+          gridSquare.candidateList.push(candidate);
+
+          // create link between constraints and candidates
+          let boxNum = Math.floor(i/3) + Math.floor(j/3) * 3;
+          boxConstraints[boxNum][k].candidateList.push(candidate);
+          rowConstraints[i][k].candidateList.push(candidate);
+          colConstraints[j][k].candidateList.push(candidate);
+          cellConstraints[i][j].candidateList.push(candidate);
+          candidate.constraintList = [ boxConstraints[boxNum][k],
+                                       rowConstraints[i][k],
+                                       colConstraints[j][k],
+                                       cellConstraints[i][j] ];
+
+        }
+      }
+    }
+  }
+
+  bindViewController(viewGrid) {
+    for (var i = 0; i < 81; i++) {
+      this.squareList[i].bindFcns(viewGrid.gridSquareWrappers[i]);
+      for (var j = 0; j < 9; j++) {
+        this.squareList[i].candidateList[j].bindFcns(
+          viewGrid.gridSquareWrappers[i].candidateWrappers[j]);
+      }
+    }
+  }
+}
+
+class Sudoku {
+  constructor(divContainerId) {
+
+    // build html structure and attach to document
+    this.container = document.getElementById(divContainerId);
+    var viewGrid = new HTMLGrid(this.container.offsetWidth);
+    this.container.appendChild(viewGrid.wrapper);
+
+    //
+    var logicGrid = new LogicGrid();
+    logicGrid.bindViewController(viewGrid);
+
+  }
+
 
   eliminateNeighborCandidates(i,j,guess) {
     var neighborList = this.neighbors(i,j);
