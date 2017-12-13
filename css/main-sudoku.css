@@ -75,7 +75,7 @@ td:after {
   margin-top: 100%;
 }
 
-td.grid-square.active > .cell-wrapper{
+td.grid-square .cell-wrapper.active{
 	border-color: #FFDA00;
 }
 

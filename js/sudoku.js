@@ -1,12 +1,137 @@
+class gridSquareWrapper {
+  constructor(divElement, parent) {
+    this.divElement = divElement;
+    this.parent = parent;
+    this.divElement.addEventListener('click',(this.activate).bind(this));
+  }
+
+  activate() {
+    console.log('test');
+    if (this.parent.activeGridSquare) {
+      this.parent.activeGridSquare.divElement.classList.remove('active');
+    }
+    this.parent.activeGridSquare = this;
+    this.divElement.classList.add('active');
+  }
+}
+
+class candidateSquareWrapper {
+  constructor(divElement) {
+    this.divElement = divElement;
+    this.clickFunction = function() {console.log('Click!', this.divElement.id);};
+    this.divElement.addEventListener('click',(this.clickHandler).bind(this));
+
+  }
+
+  set hidden(val) {
+    this.divElement.hidden = val;
+  }
+
+  setFlag(flag,val) {
+    if (val) {
+      this.divElement.classList.add(flag);
+    } else {
+      this.divElement.classList.remove(flag);
+    }
+  }
+
+  clickHandler() {
+    if (this.clickFunction) {
+      this.clickFunction();
+    }
+  }
+
+}
+
+class HTMLGrid {
+  constructor(width) {
+    this.activeGridSquare = null;
+    this.gridSquareWrappers = [];
+    this.candidateSquareWrappers = [];
+
+    this.wrapper = document.createElement('div');
+
+    this.focusTrap = document.createElement('input');
+    this.focusTrap.id = "focus-trap";
+    this.wrapper.appendChild(this.focusTrap);
+    var tbl = document.createElement('table');
+    this.wrapper.appendChild(tbl);
+    var tblBody = document.createElement('tbody');
+    tbl.appendChild(tblBody);
+    // construct outer sudoku grid table
+    for (var i = 0; i < 9; i++) {
+        var row = document.createElement('tr');
+        for (var j = 0; j < 9; j++) {
+            // construct html elements and create hierarchy
+            var tblCell = document.createElement('td');
+            row.appendChild(tblCell);
+            var wrapper = document.createElement('div');
+            tblCell.appendChild(wrapper);
+
+            this.gridSquareWrappers.push(new gridSquareWrapper(wrapper,this));
+
+            var guessDiv = document.createElement('div');
+            wrapper.appendChild(guessDiv);
+            var candidateTable = document.createElement('table');
+            wrapper.appendChild(candidateTable);
+            var innerBody = document.createElement('tbody');
+            candidateTable.appendChild(innerBody);
+
+            // font sizing
+            guessDiv.style.fontSize = (width*0.08) + 'px';
+            candidateTable.style.fontSize = (width*0.027) + 'px';
+
+            // construct inner candidate table
+            for (var k = 0; k < 3; k++) {
+                var innerRow = document.createElement('tr');
+                for (var l = 0; l < 3; l++) {
+                    var candidateNum = l + 3 * k;
+                    var candidateCell = document.createElement('td');
+                    var candidateWrapper = document.createElement('div');
+                    this.candidateSquareWrappers.push(
+                        new candidateSquareWrapper(candidateWrapper));
+                    candidateWrapper.innerHTML = candidateNum + 1;
+                    candidateWrapper.id =
+                                  'R' + i + 'C' + j + 'N' + candidateNum;
+                    candidateCell.classList.add('candidate');
+                    candidateWrapper.classList.add('candidateWraper');
+                    candidateCell.appendChild(candidateWrapper);
+                    innerRow.appendChild(candidateCell);
+
+                }
+                innerBody.appendChild(innerRow);
+            }
+
+            // add css classes for styling
+            wrapper.classList.add('cell-wrapper');
+            candidateTable.classList.add('candidates');
+            guessDiv.classList.add('guess');
+            tblCell.classList.add('grid-square');
+
+
+        }
+        tblBody.appendChild(row);
+        row.classList.add('grid-row');
+    }
+
+    // attach event handlers to container and focustrap
+    var trapFocus = function() {this.focusTrap.focus();};
+    this.wrapper.addEventListener(
+      'click', trapFocus.bind(this));
+    //this.focusTrap.addEventListener(
+    //  'keypress', this.keypressHandler.bind(this));
+
+  }
+}
+
 class sudoku {
   constructor(divContainerId) {
 
-    this.cellGrid = [ [], [], [], [], [], [], [], [], [] ];
-    this.activeSquare = null;
-
     // build html structure and assemble hierarchy:
     this.container = document.getElementById(divContainerId);
-
+    var grid = new HTMLGrid();
+    this.container.appendChild(grid.wrapper);
+/*
     this.wrapper = document.createElement('div');
 
     this.focusTrap = document.createElement('input');
@@ -47,10 +172,10 @@ class sudoku {
       if (this.readyState == 4 && this.status == 200) {
         console.log(JSON.parse(this.responseText));
       }
-    };*/
+    };
     xhttp.onreadystatechange = this.loadPuzzle.bind(this,xhttp);
     xhttp.open("GET", "puzzle.txt", true);
-    xhttp.send();
+    xhttp.send();*/
 
   }
 
@@ -361,8 +486,5 @@ class gridSquare {
     }
   }
 
-  sizeFonts(width) {
-    this.guessDiv.style.fontSize = (width*0.08) + 'px';
-    this.candidateTable.style.fontSize = (width*0.027) + 'px';
-  }
+
 }
