@@ -1,3 +1,105 @@
+class HTMLGrid {
+  constructor(width) {
+    this.activeGridSquare = null;
+    this.gridSquareWrappers = [];
+    this.actionQueue = null;
+
+    this.wrapper = document.createElement('div');
+
+    this.focusTrap = document.createElement('input');
+    this.focusTrap.id = "focus-trap";
+    this.wrapper.appendChild(this.focusTrap);
+    var tbl = document.createElement('table');
+    this.wrapper.appendChild(tbl);
+    var tblBody = document.createElement('tbody');
+    tbl.appendChild(tblBody);
+    // construct outer sudoku grid table
+    for (var i = 0; i < 9; i++) {
+      var row = document.createElement('tr');
+      for (var j = 0; j < 9; j++) {
+        // construct html elements and create hierarchy
+        var tblCell = document.createElement('td');
+        row.appendChild(tblCell);
+        var wrapper = document.createElement('div');
+        tblCell.appendChild(wrapper);
+
+        var gridSquareWrapper = new GridSquareWrapper(wrapper,this)
+        this.gridSquareWrappers.push(gridSquareWrapper);
+
+        var guessDiv = document.createElement('div');
+        wrapper.appendChild(guessDiv);
+        var candidateTable = document.createElement('table');
+        wrapper.appendChild(candidateTable);
+        var innerBody = document.createElement('tbody');
+        candidateTable.appendChild(innerBody);
+
+        // font sizing
+        guessDiv.style.fontSize = (width*0.08) + 'px';
+        candidateTable.style.fontSize = (width*0.027) + 'px';
+
+        // construct inner candidate table
+        for (var k = 0; k < 3; k++) {
+          var innerRow = document.createElement('tr');
+          for (var l = 0; l < 3; l++) {
+            var candidateNum = l + 3 * k;
+            var candidateCell = document.createElement('td');
+            var candidateWrapper = document.createElement('div');
+            gridSquareWrapper.candidateWrappers.push(
+              new CandidateWrapper(candidateWrapper,gridSquareWrapper));
+            candidateWrapper.innerHTML =
+                    '<span>' + (candidateNum + 1) + '</span>';
+            candidateWrapper.id =
+                          'R' + i + 'C' + j + 'N' + candidateNum;
+            candidateCell.classList.add('candidate');
+            candidateWrapper.classList.add('candidate-wrapper');
+            candidateCell.appendChild(candidateWrapper);
+            innerRow.appendChild(candidateCell);
+
+          }
+          innerBody.appendChild(innerRow);
+        }
+
+        // add css classes for styling
+        wrapper.classList.add('cell-wrapper');
+        candidateTable.classList.add('candidates');
+        guessDiv.classList.add('guess');
+        tblCell.classList.add('grid-square');
+
+
+      }
+      tblBody.appendChild(row);
+      row.classList.add('grid-row');
+    }
+
+    // attach event handlers to container and focustrap
+    var trapFocus = function() {this.focusTrap.focus();};
+    this.wrapper.addEventListener(
+      'click', trapFocus.bind(this));
+    this.focusTrap.addEventListener(
+      'keypress', this.keypressHandler.bind(this));
+
+  }
+
+  keypressHandler(event) {
+    if (!event.ctrlKey & !event.shiftKey & !event.altKey & !event.metaKey){
+      if (this.activeGridSquare) {
+        if (/^[1-9]$/.test(event.key)) {
+          this.activeGridSquare.enterGuess(parseInt(event.key));
+        } else if (event.key == 'Delete' || event.key == 'Backspace') {
+          this.activeGridSquare.enterGuess(0);
+        }
+      }
+    } else if  (event.ctrlKey & !event.shiftKey & !event.altKey & !event.metaKey) {
+      if (event.key == 'z' || event.key == 'Z') {
+        this.actionQueue.undo();
+      }
+      if (event.key == 'y' || event.key == 'Y') {
+        this.actionQueue.redo();
+      }
+    }
+  }
+}
+
 class GridSquareWrapper {
   constructor(divElement, parent) {
     this.divElement = divElement;
@@ -5,11 +107,9 @@ class GridSquareWrapper {
     this.divElement.addEventListener('click',(this.activate).bind(this));
     this.candidateWrappers = [];
     this.enterGuessFcn = null;
-    this.deleteGuessFcn = null;
   }
 
   activate() {
-    console.log('test');
     if (this.parent.activeGridSquare) {
       this.parent.activeGridSquare.divElement.classList.remove('active');
     }
@@ -20,19 +120,9 @@ class GridSquareWrapper {
   // controller
   enterGuess(k) {
     if (this.enterGuessFcn) {
-      this.enterGuessFcn(k);
+      this.enterGuessFcn(k - 1);
     } else {
       console.log('EnterGuess not bound: ', k - 1);
-      this.showGuess(k - 1);
-    }
-  }
-
-  deleteGuess() {
-    if (this.deleteGuessFcn) {
-      this.deleteGuessFcn();
-    } else {
-      console.log('DeleteGuess not bound');
-      this.hideGuess();
     }
   }
 
@@ -62,12 +152,12 @@ class CandidateWrapper {
   constructor(divElement,parent) {
     this.divElement = divElement;
     this.parent = parent;
-    this.clickFunction = function() {console.log('clickFunction not set!', this.divElement.id);};
+    this.clickFunction = null;
     this.divElement.addEventListener('click',(this.clickHandler).bind(this));
   }
 
   setHidden(val) {
-    this.divElement.hidden = val;
+    this.divElement.childNodes[0].hidden = val;
   }
 
   setFlag(flag,val) {
@@ -89,146 +179,210 @@ class CandidateWrapper {
 
 }
 
-class HTMLGrid {
-  constructor(width) {
-    this.activeGridSquare = null;
-    this.gridSquareWrappers = [];
-
-    this.wrapper = document.createElement('div');
-
-    this.focusTrap = document.createElement('input');
-    this.focusTrap.id = "focus-trap";
-    this.wrapper.appendChild(this.focusTrap);
-    var tbl = document.createElement('table');
-    this.wrapper.appendChild(tbl);
-    var tblBody = document.createElement('tbody');
-    tbl.appendChild(tblBody);
-    // construct outer sudoku grid table
-    for (var i = 0; i < 9; i++) {
-        var row = document.createElement('tr');
-        for (var j = 0; j < 9; j++) {
-            // construct html elements and create hierarchy
-            var tblCell = document.createElement('td');
-            row.appendChild(tblCell);
-            var wrapper = document.createElement('div');
-            tblCell.appendChild(wrapper);
-
-            var gridSquareWrapper = new GridSquareWrapper(wrapper,this)
-            this.gridSquareWrappers.push(gridSquareWrapper);
-
-            var guessDiv = document.createElement('div');
-            wrapper.appendChild(guessDiv);
-            var candidateTable = document.createElement('table');
-            wrapper.appendChild(candidateTable);
-            var innerBody = document.createElement('tbody');
-            candidateTable.appendChild(innerBody);
-
-            // font sizing
-            guessDiv.style.fontSize = (width*0.08) + 'px';
-            candidateTable.style.fontSize = (width*0.027) + 'px';
-
-            // construct inner candidate table
-            for (var k = 0; k < 3; k++) {
-                var innerRow = document.createElement('tr');
-                for (var l = 0; l < 3; l++) {
-                    var candidateNum = l + 3 * k;
-                    var candidateCell = document.createElement('td');
-                    var candidateWrapper = document.createElement('div');
-                    gridSquareWrapper.candidateWrappers.push(
-                      new CandidateWrapper(candidateWrapper,gridSquareWrapper));
-                    candidateWrapper.innerHTML = candidateNum + 1;
-                    candidateWrapper.id =
-                                  'R' + i + 'C' + j + 'N' + candidateNum;
-                    candidateCell.classList.add('candidate');
-                    candidateWrapper.classList.add('candidate-wrapper');
-                    candidateCell.appendChild(candidateWrapper);
-                    innerRow.appendChild(candidateCell);
-
-                }
-                innerBody.appendChild(innerRow);
-            }
-
-            // add css classes for styling
-            wrapper.classList.add('cell-wrapper');
-            candidateTable.classList.add('candidates');
-            guessDiv.classList.add('guess');
-            tblCell.classList.add('grid-square');
-
-
-        }
-        tblBody.appendChild(row);
-        row.classList.add('grid-row');
-    }
-
-    // attach event handlers to container and focustrap
-    var trapFocus = function() {this.focusTrap.focus();};
-    this.wrapper.addEventListener(
-      'click', trapFocus.bind(this));
-    this.focusTrap.addEventListener(
-      'keypress', this.keypressHandler.bind(this));
-
-  }
-
-  keypressHandler(event) {
-    if (this.activeGridSquare) {
-      if (/^[1-9]$/.test(event.key)) {
-        this.activeGridSquare.enterGuess(parseInt(event.key));
-      } else if (event.key == 'Delete') {
-        this.activeGridSquare.deleteGuess();
-      }
-    }
-  }
-}
-
 class Candidate {
-  constructor(parent) {
+  constructor(parent,id) {
     this.parent = parent;
-    this.valid = true;
+    this.id = id;
+    this.validProp = true;
+    this.toggled = null;
+    this.guessed = false;
     this.constraintList = [];
     this.setFlagFcn = null;
     this.setHiddenFcn = null;
+    this.actionQueue = null;
+  }
+  get valid() {
+    if (this.toggled != null) {
+      return this.toggled;
+    } else {
+      return this.validProp;
+    }
   }
 
-  bindFcns(candidateWrapper) {
-    this.setHiddenFcn = candidateWrapper.setHidden.bind(candidateWrapper);
-    this.setFlagFcn = candidateWrapper.setFlag.bind(candidateWrapper);
-    candidateWrapper.clickFunction = this.toggle.bind(this);
+  set valid(val) {
+    this.validProp = val;
+    this.setHiddenFcn(!this.valid);
   }
 
-  toggle () {
-    console.log('Toggle!');
+  setConflict(type, val) {
+    if (this.guessed) {
+      this.parent.setFlagFcn(type + '-conflict-flag',this.guessed & val);
+    }
+    this.setFlagFcn(type + '-conflict-flag',val);
   }
+
+  toggle() {
+    var action = new Command()
+    action.actionFcn = this.toggleFcn.bind(this);
+    action.undoFcn = this.toggleFcn.bind(this);
+    this.actionQueue.push(action);
+  }
+
+  toggleFcn() {
+    if (this.toggled != null && this.toggled == this.valid) {
+      this.toggled = null;
+    } else {
+      this.toggled = !this.valid;
+    }
+    this.setHiddenFcn(!this.valid);
+    this.constraintList.forEach(constraint => {constraint.updateCandidates();});
+  }
+
+  guess() {
+    this.guessed = true;
+    this.constraintList.forEach(constraint => {constraint.updateCandidates();});
+  }
+
+  unguess() {
+    this.guessed = false;
+    this.constraintList.forEach(constraint => {constraint.updateCandidates();});
+    this.parent.setFlagFcn('collision-conflict-flag',false);
+  }
+
+  update() {
+    this.valid = !this.constraintList.some(
+      constraint => constraint.candidateList.some(
+        candidate => (candidate != this) && candidate.guessed));
+    this.setConflict('collision',(this.guessed && !this.validProp) ||
+                           (this.valid && !this.validProp) );
+  }
+
 }
 
 class GridSquare {
   constructor() {
+    this.guessedCandidate = null;
     this.prefilled = false;
     this.candidateList = [];
     this.showGuessFcn = null;
     this.hideGuessFcn = null;
     this.setFlagFcn = null;
+    this.actionQueue = null;
   }
 
-  bindFcns(GridSquareWrapper) {
-    this.showguessFcn = GridSquareWrapper.showGuess.bind(GridSquareWrapper);
-    this.hideGuessFcn = GridSquareWrapper.hideGuess.bind(GridSquareWrapper);
-    this.setFlagFcn = GridSquareWrapper.setFlag.bind(GridSquareWrapper);
-    GridSquareWrapper.enterGuessFcn = this.enterGuess.bind(this);
-    GridSquareWrapper.deleteGuessFcn = this.deleteGuess.bind(this);
+  enterGuess(newGuess, prefilled = false) {
+    var previousGuess = -1;
+    if (this.guessedCandidate) {previousGuess = this.guessedCandidate.id};
+    if (!this.prefilled && (previousGuess != newGuess)) {
+      var action = new Command()
+      action.actionFcn = this.enterGuessFcn.bind(this,newGuess);
+      action.undoFcn = this.enterGuessFcn.bind(this,previousGuess);
+      this.actionQueue.push(action);
+    }
   }
 
-  enterGuess(k) {
-    console.log('EnterGuess bound ', k);
+  enterGuessFcn(k, prefill = false) {
+    if (this.guessedCandidate) {
+      this.guessedCandidate.unguess();
+    }
+    if (k != -1) {
+      this.showguessFcn(k);
+      this.candidateList[k].guess();
+      this.guessedCandidate = this.candidateList[k];
+      //this.guessedCandidate.update();
+    } else {
+      this.hideGuessFcn();
+      this.guessedCandidate = null;
+    }
+    if (prefill) {
+      this.prefilled = true;
+      this.setFlagFcn('prefilled',true);
+    }
   }
-  deleteGuess() {
-    console.log('DeleteGuess bound');
-  }
+
 }
 
 class Constraint {
   constructor(type) {
     this.candidateList = [];
     this.type = type;
+  }
+
+  updateCandidates() {
+    this.candidateList.forEach(candidate => {candidate.update();});
+  }
+
+  check() {
+    let numOptions = this.candidateList.reduce((sum,candidate) => sum + candidate.valid, 0);
+    this.candidateList.forEach(candidate => {
+      candidate.setConflict(this.type,numOptions == 0);
+    });
+    this.candidateList.forEach(candidate => {
+      candidate.setFlagFcn(this.type + '-solve-flag',(numOptions == 1) && candidate.valid);
+    });
+
+  }
+}
+
+class Command {
+  constructor(auto = false) {
+    this.auto = auto; // flag for whether this action was created by user or automatically
+  }
+
+  execute() {
+    this.actionFcn();
+  }
+
+  undo() {
+    this.undoFcn();
+  }
+}
+
+class CommandQueue {
+  constructor(boardUpdate) {
+    this.queue = [];
+    this.current = -1;
+    this.boardUpdateFcn = boardUpdate;
+  }
+
+  push(commandObject) {
+    commandObject.execute();
+    this.current++;
+    this.queue.splice(this.current);
+    this.queue.push(commandObject);
+    this.boardUpdateFcn();
+  }
+
+  undo() {
+    if (this.current > -1) {
+      this.queue[this.current].undo();
+      this.current--;
+      this.boardUpdateFcn();
+    }
+  }
+
+  redo() {
+    if (this.current < this.queue.length - 1) {
+      this.current++;
+      this.queue[this.current].execute();
+      this.boardUpdateFcn();
+    }
+  }
+
+  bindViewControllerLogic(viewGrid,logicGrid) {
+    viewGrid.actionQueue = this;
+    for (var i = 0; i < 81; i++) {
+      this.bindGridSquareFcns(logicGrid.squareList[i], viewGrid.gridSquareWrappers[i]);
+      for (var j = 0; j < 9; j++) {
+        this.bindCandidateFcns(logicGrid.squareList[i].candidateList[j],
+          viewGrid.gridSquareWrappers[i].candidateWrappers[j]);
+      }
+    }
+  }
+
+  bindCandidateFcns(candidate,candidateWrapper) {
+    candidate.setHiddenFcn = candidateWrapper.setHidden.bind(candidateWrapper);
+    candidate.setFlagFcn = candidateWrapper.setFlag.bind(candidateWrapper);
+    candidate.actionQueue = this;
+    candidateWrapper.clickFunction = candidate.toggle.bind(candidate);
+  }
+
+  bindGridSquareFcns(GridSquare, GridSquareWrapper) {
+    GridSquare.showguessFcn = GridSquareWrapper.showGuess.bind(GridSquareWrapper);
+    GridSquare.hideGuessFcn = GridSquareWrapper.hideGuess.bind(GridSquareWrapper);
+    GridSquare.setFlagFcn = GridSquareWrapper.setFlag.bind(GridSquareWrapper);
+    GridSquare.actionQueue = this;
+    GridSquareWrapper.enterGuessFcn = GridSquare.enterGuess.bind(GridSquare);
   }
 }
 
@@ -267,7 +421,7 @@ class LogicGrid {
         this.squareList.push(gridSquare);
         for (var k = 0; k < 9; k++) {
           // create candidate and add to corresponding square
-          var candidate = new Candidate();
+          var candidate = new Candidate(gridSquare,k);
           gridSquare.candidateList.push(candidate);
 
           // create link between constraints and candidates
@@ -286,317 +440,48 @@ class LogicGrid {
     }
   }
 
-  bindViewController(viewGrid) {
-    for (var i = 0; i < 81; i++) {
-      this.squareList[i].bindFcns(viewGrid.gridSquareWrappers[i]);
-      for (var j = 0; j < 9; j++) {
-        this.squareList[i].candidateList[j].bindFcns(
-          viewGrid.gridSquareWrappers[i].candidateWrappers[j]);
-      }
-    }
+  checkConstraints() {
+    this.constraintList.forEach(constraint => {constraint.check();});
   }
 }
 
 class Sudoku {
   constructor(divContainerId) {
 
-    // build html structure and attach to document
+    // build html structure
     this.container = document.getElementById(divContainerId);
-    var viewGrid = new HTMLGrid(this.container.offsetWidth);
-    this.container.appendChild(viewGrid.wrapper);
+    this.viewGrid = new HTMLGrid(this.container.offsetWidth);
 
-    //
-    var logicGrid = new LogicGrid();
-    logicGrid.bindViewController(viewGrid);
+
+    // build logic structure and CommandQueue
+    this.logicGrid = new LogicGrid();
+    this.actionQueue = new CommandQueue(
+            this.logicGrid.checkConstraints.bind(this.logicGrid));
+
+    this.actionQueue.bindViewControllerLogic(this.viewGrid,this.logicGrid);
+
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = this.loadPuzzle.bind(this,xhttp);
+    xhttp.open("GET", "puzzle.txt", true);
+    xhttp.send();
 
   }
 
-
-  eliminateNeighborCandidates(i,j,guess) {
-    var neighborList = this.neighbors(i,j);
-    for (var k = 0; k < neighborList.length; k++) {
-      let [m,n] = neighborList[k];
-      this.cellGrid[m][n].removeCandidate(guess);
-    }
-    this.checkGrid();
-  }
-
-  updateNeighborCandidates(i,j,guess) {
-    var neighborList = this.neighbors(i,j);
-    for (var k = 0; k < neighborList.length; k++) {
-      let [m,n] = neighborList[k];
-      this.updateCandidates(m, n);
-    }
-    this.checkGrid();
-  }
-
-  updateCandidates(i,j) {
-    var neighborList = this.neighbors(i,j);
-    for (var k = 0; k < 9; k++) {
-      this.cellGrid[i][j].addCandidate(k);
-    }
-    for (var k = 0; k < neighborList.length; k++) {
-      let [m,n] = neighborList[k];
-      if (this.cellGrid[m][n].guess) {
-        this.cellGrid[i][j].removeCandidate(this.cellGrid[m][n].guess - 1);
-      }
-    }
-  }
-
-  checkGrid() {
-    for (var k = 0; k<9; k++) {
-      this.checkGroup(this.listBoxGroup(k),'box');
-      this.checkGroup(this.listRowGroup(k),'row');
-      this.checkGroup(this.listColGroup(k),'col');
-    }
-  }
-
-  // check for conflict between guesses and lone candidates for solving
-  checkGroup(group, groupType) {
-    var candidates = [0, 0, 0, 0, 0, 0, 0, 0, 0];
-    var guesses = [0, 0, 0, 0, 0, 0, 0, 0, 0];
-    var conflictFlags = [];
-    var solveFlags = [];
-    for (var j = 0; j<9; j++) {
-      let [m,n] = group[j];
-      if (this.cellGrid[m][n].guess){
-        guesses[this.cellGrid[m][n].guess - 1]++;
-      } else {
-        var countSquare = 0; // count for candidates in single square
-        var candidateID = null;
-        for (var k = 0; k<9; k++){
-          if (this.cellGrid[m][n].candidates[k]) {
-            countSquare += 1;
-            candidates[k] += 1;
-            candidateID = k;
+  loadPuzzle(xhttp) {
+    if (xhttp.readyState == 4 && xhttp.status == 200) {
+      let board = JSON.parse(xhttp.responseText);
+      let k = 0;
+      for (var i = 0; i < 9; i++) {
+        for (var j = 0; j < 9; j++) {
+          if (board[i][j]) {
+            this.logicGrid.squareList[k].enterGuessFcn(board[i][j] - 1, true);
           }
-        }
-        this.cellGrid[m][n].clearSolveFlag('cell');
-        if (countSquare == 1) {
-          this.cellGrid[m][n].setSolveFlag(candidateID,'cell');
+          k++;
         }
       }
-    }
-    for (var k = 0; k < 9; k++) {
-      if (guesses[k] > 1) {conflictFlags.push(k)};
-      if (candidates[k] == 1) {solveFlags.push(k)};
-    }
-    for (var j = 0; j<9; j++) {
-      let [m,n] = group[j];
-      let found = false;
-      let solvable = false;
-      if (this.cellGrid[m][n].guess){
-        for (var k = 0; k < conflictFlags.length; k++){
-          found = found ||
-            (this.cellGrid[m][n].guess - 1 == conflictFlags[k]);
-        }
-      } else {
-        this.cellGrid[m][n].clearSolveFlag(groupType);
-        for (var k = 0; k < solveFlags.length; k++){
-          if (this.cellGrid[m][n].candidates[solveFlags[k]]) {
-            this.cellGrid[m][n].setSolveFlag(solveFlags[k],groupType);
-          }
-        }
-      }
-      this.cellGrid[m][n].setConflictFlag(found,groupType);
+      this.logicGrid.checkConstraints();
+      this.container.appendChild(this.viewGrid.wrapper);
     }
   }
-
-  listBoxGroup(k) {
-    var group = [];
-    var mLow = (k % 3) * 3;
-    var nLow = Math.floor(k/3) * 3;
-    for (var m = mLow; m < mLow + 3; m++) {
-      for (var n = nLow; n < nLow + 3; n++) {
-        group.push([m,n]);
-      }
-    }
-    return group;
-  }
-
-  listColGroup(j) {
-    var group = [];
-    for (var m = 0; m<9; m++) {
-      group.push([m,j]);
-    }
-    return group;
-  }
-
-  listRowGroup(i) {
-    var group = [];
-    for (var n = 0; n<9; n++) {
-      group.push([i,n]);
-    }
-    return group;
-  }
-
-  neighbors(i,j) {
-    var neighborList = [];
-    neighborList = neighborList.concat(
-      this.listBoxGroup(Math.floor(i/3) + Math.floor(j/3) * 3));
-    neighborList = neighborList.concat(this.listRowGroup(i));
-    neighborList = neighborList.concat(this.listColGroup(j));
-    return neighborList;
-  }
-
-  candidateClickHandler(i,j,k) {
-    if (this.activeSquare) {
-      let [m,n] = this.activeSquare;
-      if (m == i & n == j ) {
-        this.cellGrid[i][j].toggleCandidate(k);
-        this.checkGrid();
-      }
-    }
-  }
-
-  keypressHandler(event) {
-    if (this.activeSquare) {
-      let [m,n] = this.activeSquare;
-      if (/^[1-9]$/.test(event.key)) {
-        this.cellGrid[m][n].enterGuess(event.key);
-        this.eliminateNeighborCandidates(m, n, parseInt(event.key) - 1);
-      } else if (event.key == 'Delete') {
-        this.cellGrid[m][n].deleteGuess();
-        this.updateNeighborCandidates(m, n);
-        this.checkGrid();
-      } else if (event.key == 'd') {
-        this.downloadGrid();
-      }
-    }
-  }
-
-  downloadGrid() {
-    console.log(JSON.stringify(this.cellGrid.map(function(gridRow) {
-        return gridRow.map(function (gridSquare) {
-          return gridSquare.guess;
-        })
-      })));
-  }
-
-  activateSquare(i,j) {
-    if (this.activeSquare) {
-      let [m,n] = this.activeSquare;
-      this.cellGrid[m][n].deactivate();
-    }
-    this.cellGrid[i][j].activate();
-    this.activeSquare = [i,j];
-  }
-}
-
-class gridSquare {
-  constructor(i,j) {
-    this.guess = null;
-    this.candidates = [true,true,true,true,true,true,true,true,true];
-    this.candidateCells = [];
-    this.prefilled = false;
-
-    // construct html elements and create hierarchy
-    this.tblCell = document.createElement('td');
-    var wrapper = document.createElement('div');
-    this.tblCell.appendChild(wrapper);
-    this.guessDiv = document.createElement('div');
-    wrapper.appendChild(this.guessDiv);
-    this.candidateTable = document.createElement('table');
-    wrapper.appendChild(this.candidateTable);
-    var tblBody = document.createElement('tbody');
-    this.candidateTable.appendChild(tblBody);
-
-    // construct candidate table
-    for (var i = 0; i < 3; i++) {
-        var row = document.createElement('tr');
-        for (var j = 0; j < 3; j++) {
-            var candidateNum = j + 3 * i;
-            this.candidateCells[candidateNum] = document.createElement('td');
-            var candidate = document.createElement('div');
-            candidate.innerHTML = candidateNum + 1;
-            candidate.classList.add('N' + candidateNum);
-            this.candidateCells[candidateNum].classList.add('candidate');
-            this.candidateCells[candidateNum].appendChild(candidate);
-            row.appendChild(this.candidateCells[candidateNum]);
-        }
-        tblBody.appendChild(row);
-    }
-
-    // add css classes for styling
-    wrapper.classList.add('cell-wrapper');
-    this.candidateTable.classList.add('candidates');
-    this.guessDiv.classList.add('guess');
-    this.tblCell.classList.add('grid-square');
-
-  }
-
-  bindCandidateClickHandler(clickHandler) {
-    for (var k = 0; k < 9; k++) {
-      this.candidateCells[k].addEventListener('click',
-        clickHandler.bind(null,k));
-    }
-  }
-
-  bindSquareClickHandler(clickHandler) {
-    this.tblCell.addEventListener('click',clickHandler);
-  }
-  activate() {
-    this.tblCell.classList.add('active');
-  }
-
-  deactivate() {
-    this.tblCell.classList.remove('active');
-  }
-
-  toggleCandidate(k) {
-    this.candidates[k] = !this.candidates[k];
-    this.candidateCells[k].childNodes[0].hidden = !this.candidates[k];
-  }
-
-  removeCandidate(k) {
-    this.candidates[k] = false;
-    this.candidateCells[k].childNodes[0].hidden = true;
-  }
-
-  addCandidate(k) {
-    this.candidates[k] = true;
-    this.candidateCells[k].childNodes[0].hidden = false;
-  }
-
-  enterGuess(k,prefilled = false) {
-    if (!this.prefilled) {
-      this.guess = parseInt(k);
-      this.guessDiv.innerHTML = k;
-      this.candidateTable.hidden = true;
-      this.guessDiv.hidden = false;
-      if (prefilled) {
-        this.prefilled = prefilled;
-        this.tblCell.classList.add('prefilled');
-      }
-    }
-  }
-
-  deleteGuess() {
-    if (!this.prefilled) {
-      this.guess = null;
-      this.guessDiv.innerHTML = '';
-      this.guessDiv.hidden = true;
-      this.candidateTable.hidden = false;
-    }
-  }
-
-  setSolveFlag(k,groupType) {
-    this.candidateCells[k].classList.add(groupType + '-solve-flag');
-  }
-
-  clearSolveFlag(groupType) {
-    for (var k = 0; k < 9; k++) {
-      this.candidateCells[k].classList.remove(groupType + '-solve-flag');
-    }
-  }
-
-  setConflictFlag(flag,groupType) {
-    if (flag) {
-      this.tblCell.classList.add(groupType + '-conflict');
-    } else {
-      this.tblCell.classList.remove(groupType + '-conflict');
-    }
-  }
-
 
 }

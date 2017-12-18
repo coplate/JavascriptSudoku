@@ -79,37 +79,40 @@ td.grid-square .cell-wrapper.active{
 	border-color: #FFDA00;
 }
 
-td.grid-square.prefilled > .cell-wrapper{
+td.grid-square .cell-wrapper.prefilled{
 	background-color: #f5f5f5;
 }
 
-td.grid-square.box-conflict > .cell-wrapper,
-td.grid-square.row-conflict > .cell-wrapper,
-td.grid-square.col-conflict > .cell-wrapper{
+.candidate-wrapper.box-conflict-flag,
+.candidate-wrapper.row-conflict-flag,
+.candidate-wrapper.col-conflict-flag,
+.candidate-wrapper.cell-conflict-flag,
+.candidate-wrapper.collision-conflict-flag,
+td.grid-square .cell-wrapper.collision-conflict-flag{
 	background-color: #FF6060;
 }
 
 tr.grid-row:nth-child(3), tr.grid-row:nth-child(6) {
-    border-bottom: 2px solid gray;
+  border-bottom: 2px solid gray;
 }
 
-td.candidate.box-solve-flag,
-td.candidate.row-solve-flag,
-td.candidate.col-solve-flag,
-td.candidate.cell-solve-flag {
-    background-color: lightblue;
-    color: white;
+td.candidate .candidate-wrapper.box-solve-flag,
+td.candidate .candidate-wrapper.row-solve-flag,
+td.candidate .candidate-wrapper.col-solve-flag,
+td.candidate .candidate-wrapper.cell-solve-flag {
+  background-color: lightblue;
+  color: white;
 }
 
 .candidates {
-    font-size: 12px;
+  font-size: 12px;
 }
 
 #game-area #focus-trap {
-    border: none;
-    height: 1px;
-    left: -1000px;
-    outline: none;
-    position: absolute;
-    width: 1px;
+  border: none;
+  height: 1px;
+  left: -1000px;
+  outline: none;
+  position: absolute;
+  width: 1px;
 }
