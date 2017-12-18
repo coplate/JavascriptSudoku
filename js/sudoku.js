@@ -1,103 +1,42 @@
-class HTMLGrid {
-  constructor(width) {
-    this.activeGridSquare = null;
-    this.gridSquareWrappers = [];
-    this.actionQueue = null;
+class Sudoku {
+  constructor(divContainerId) {
 
-    this.wrapper = document.createElement('div');
+    // build html structure
+    this.container = document.getElementById(divContainerId);
+    this.viewGrid = new HTMLGrid(this.container.offsetWidth);
 
-    this.focusTrap = document.createElement('input');
-    this.focusTrap.id = "focus-trap";
-    this.wrapper.appendChild(this.focusTrap);
-    var tbl = document.createElement('table');
-    this.wrapper.appendChild(tbl);
-    var tblBody = document.createElement('tbody');
-    tbl.appendChild(tblBody);
-    // construct outer sudoku grid table
-    for (var i = 0; i < 9; i++) {
-      var row = document.createElement('tr');
-      for (var j = 0; j < 9; j++) {
-        // construct html elements and create hierarchy
-        var tblCell = document.createElement('td');
-        row.appendChild(tblCell);
-        var wrapper = document.createElement('div');
-        tblCell.appendChild(wrapper);
 
-        var gridSquareWrapper = new GridSquareWrapper(wrapper,this)
-        this.gridSquareWrappers.push(gridSquareWrapper);
+    // build logic structure and CommandQueue
+    this.logicGrid = new LogicGrid();
+    this.actionQueue = new CommandQueue(
+            this.logicGrid.checkConstraints.bind(this.logicGrid));
 
-        var guessDiv = document.createElement('div');
-        wrapper.appendChild(guessDiv);
-        var candidateTable = document.createElement('table');
-        wrapper.appendChild(candidateTable);
-        var innerBody = document.createElement('tbody');
-        candidateTable.appendChild(innerBody);
+    this.actionQueue.bindViewControllerLogic(this.viewGrid,this.logicGrid);
 
-        // font sizing
-        guessDiv.style.fontSize = (width*0.08) + 'px';
-        candidateTable.style.fontSize = (width*0.027) + 'px';
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = this.loadPuzzle.bind(this,xhttp);
+    xhttp.open("GET", "puzzle.txt", true);
+    xhttp.send();
 
-        // construct inner candidate table
-        for (var k = 0; k < 3; k++) {
-          var innerRow = document.createElement('tr');
-          for (var l = 0; l < 3; l++) {
-            var candidateNum = l + 3 * k;
-            var candidateCell = document.createElement('td');
-            var candidateWrapper = document.createElement('div');
-            gridSquareWrapper.candidateWrappers.push(
-              new CandidateWrapper(candidateWrapper,gridSquareWrapper));
-            candidateWrapper.innerHTML =
-                    '<span>' + (candidateNum + 1) + '</span>';
-            candidateWrapper.id =
-                          'R' + i + 'C' + j + 'N' + candidateNum;
-            candidateCell.classList.add('candidate');
-            candidateWrapper.classList.add('candidate-wrapper');
-            candidateCell.appendChild(candidateWrapper);
-            innerRow.appendChild(candidateCell);
+  }
 
+  loadPuzzle(xhttp) {
+    if (xhttp.readyState == 4 && xhttp.status == 200) {
+      let board = JSON.parse(xhttp.responseText);
+      let k = 0;
+      for (var i = 0; i < 9; i++) {
+        for (var j = 0; j < 9; j++) {
+          if (board[i][j]) {
+            this.logicGrid.squareList[k].enterGuessFcn(board[i][j] - 1, true);
           }
-          innerBody.appendChild(innerRow);
-        }
-
-        // add css classes for styling
-        wrapper.classList.add('cell-wrapper');
-        candidateTable.classList.add('candidates');
-        guessDiv.classList.add('guess');
-        tblCell.classList.add('grid-square');
-
-
-      }
-      tblBody.appendChild(row);
-      row.classList.add('grid-row');
-    }
-
-    // attach event handlers to container and focustrap
-    var trapFocus = function() {this.focusTrap.focus();};
-    this.wrapper.addEventListener(
-      'click', trapFocus.bind(this));
-    this.focusTrap.addEventListener(
-      'keydown', this.keypressHandler.bind(this));
-
-  }
-
-  keypressHandler(event) {
-    if (!event.ctrlKey & !event.shiftKey & !event.altKey & !event.metaKey){
-      if (this.activeGridSquare) {
-        if (/^[1-9]$/.test(event.key)) {
-          this.activeGridSquare.enterGuess(parseInt(event.key));
-        } else if (event.key == 'Delete' || event.key == 'Backspace') {
-          this.activeGridSquare.enterGuess(0);
+          k++;
         }
       }
-    } else if  (event.ctrlKey & !event.shiftKey & !event.altKey & !event.metaKey) {
-      if (event.key == 'z' || event.key == 'Z') {
-        this.actionQueue.undo();
-      }
-      if (event.key == 'y' || event.key == 'Y') {
-        this.actionQueue.redo();
-      }
+      this.logicGrid.checkConstraints();
+      this.container.appendChild(this.viewGrid.wrapper);
     }
   }
+
 }
 
 class GridSquareWrapper {
@@ -146,6 +85,49 @@ class GridSquareWrapper {
       this.divElement.classList.remove(flag);
     }
   }
+}
+
+class GridSquare {
+  constructor() {
+    this.guessedCandidate = null;
+    this.prefilled = false;
+    this.candidateList = [];
+    this.showGuessFcn = null;
+    this.hideGuessFcn = null;
+    this.setFlagFcn = null;
+    this.actionQueue = null;
+  }
+
+  enterGuess(newGuess, prefilled = false) {
+    var previousGuess = -1;
+    if (this.guessedCandidate) {previousGuess = this.guessedCandidate.id};
+    if (!this.prefilled && (previousGuess != newGuess)) {
+      var action = new Command()
+      action.actionFcn = this.enterGuessFcn.bind(this,newGuess);
+      action.undoFcn = this.enterGuessFcn.bind(this,previousGuess);
+      this.actionQueue.push(action);
+    }
+  }
+
+  enterGuessFcn(k, prefill = false) {
+    if (this.guessedCandidate) {
+      this.guessedCandidate.unguess();
+    }
+    if (k != -1) {
+      this.showguessFcn(k);
+      this.candidateList[k].guess();
+      this.guessedCandidate = this.candidateList[k];
+      //this.guessedCandidate.update();
+    } else {
+      this.hideGuessFcn();
+      this.guessedCandidate = null;
+    }
+    if (prefill) {
+      this.prefilled = true;
+      this.setFlagFcn('prefilled',true);
+    }
+  }
+
 }
 
 class CandidateWrapper {
@@ -245,49 +227,6 @@ class Candidate {
         candidate => (candidate != this) && candidate.guessed));
     this.setConflict('collision',(this.guessed && !this.validProp) ||
                            (this.valid && !this.validProp) );
-  }
-
-}
-
-class GridSquare {
-  constructor() {
-    this.guessedCandidate = null;
-    this.prefilled = false;
-    this.candidateList = [];
-    this.showGuessFcn = null;
-    this.hideGuessFcn = null;
-    this.setFlagFcn = null;
-    this.actionQueue = null;
-  }
-
-  enterGuess(newGuess, prefilled = false) {
-    var previousGuess = -1;
-    if (this.guessedCandidate) {previousGuess = this.guessedCandidate.id};
-    if (!this.prefilled && (previousGuess != newGuess)) {
-      var action = new Command()
-      action.actionFcn = this.enterGuessFcn.bind(this,newGuess);
-      action.undoFcn = this.enterGuessFcn.bind(this,previousGuess);
-      this.actionQueue.push(action);
-    }
-  }
-
-  enterGuessFcn(k, prefill = false) {
-    if (this.guessedCandidate) {
-      this.guessedCandidate.unguess();
-    }
-    if (k != -1) {
-      this.showguessFcn(k);
-      this.candidateList[k].guess();
-      this.guessedCandidate = this.candidateList[k];
-      //this.guessedCandidate.update();
-    } else {
-      this.hideGuessFcn();
-      this.guessedCandidate = null;
-    }
-    if (prefill) {
-      this.prefilled = true;
-      this.setFlagFcn('prefilled',true);
-    }
   }
 
 }
@@ -442,43 +381,104 @@ class LogicGrid {
   }
 }
 
-class Sudoku {
-  constructor(divContainerId) {
+class HTMLGrid {
+  constructor(width) {
+    this.activeGridSquare = null;
+    this.gridSquareWrappers = [];
+    this.actionQueue = null;
 
-    // build html structure
-    this.container = document.getElementById(divContainerId);
-    this.viewGrid = new HTMLGrid(this.container.offsetWidth);
+    this.wrapper = document.createElement('div');
+
+    this.focusTrap = document.createElement('input');
+    this.focusTrap.id = "focus-trap";
+    this.wrapper.appendChild(this.focusTrap);
+    var tbl = document.createElement('table');
+    this.wrapper.appendChild(tbl);
+    var tblBody = document.createElement('tbody');
+    tbl.appendChild(tblBody);
+    // construct outer sudoku grid table
+    for (var i = 0; i < 9; i++) {
+      var row = document.createElement('tr');
+      for (var j = 0; j < 9; j++) {
+        // construct html elements and create hierarchy
+        var tblCell = document.createElement('td');
+        row.appendChild(tblCell);
+        var wrapper = document.createElement('div');
+        tblCell.appendChild(wrapper);
+
+        var gridSquareWrapper = new GridSquareWrapper(wrapper,this)
+        this.gridSquareWrappers.push(gridSquareWrapper);
+
+        var guessDiv = document.createElement('div');
+        wrapper.appendChild(guessDiv);
+        var candidateTable = document.createElement('table');
+        wrapper.appendChild(candidateTable);
+        var innerBody = document.createElement('tbody');
+        candidateTable.appendChild(innerBody);
+
+        // font sizing
+        guessDiv.style.fontSize = (width*0.08) + 'px';
+        candidateTable.style.fontSize = (width*0.027) + 'px';
+
+        // construct inner candidate table
+        for (var k = 0; k < 3; k++) {
+          var innerRow = document.createElement('tr');
+          for (var l = 0; l < 3; l++) {
+            var candidateNum = l + 3 * k;
+            var candidateCell = document.createElement('td');
+            var candidateWrapper = document.createElement('div');
+            gridSquareWrapper.candidateWrappers.push(
+              new CandidateWrapper(candidateWrapper,gridSquareWrapper));
+            candidateWrapper.innerHTML =
+                    '<span>' + (candidateNum + 1) + '</span>';
+            candidateWrapper.id =
+                          'R' + i + 'C' + j + 'N' + candidateNum;
+            candidateCell.classList.add('candidate');
+            candidateWrapper.classList.add('candidate-wrapper');
+            candidateCell.appendChild(candidateWrapper);
+            innerRow.appendChild(candidateCell);
+
+          }
+          innerBody.appendChild(innerRow);
+        }
+
+        // add css classes for styling
+        wrapper.classList.add('cell-wrapper');
+        candidateTable.classList.add('candidates');
+        guessDiv.classList.add('guess');
+        tblCell.classList.add('grid-square');
 
 
-    // build logic structure and CommandQueue
-    this.logicGrid = new LogicGrid();
-    this.actionQueue = new CommandQueue(
-            this.logicGrid.checkConstraints.bind(this.logicGrid));
+      }
+      tblBody.appendChild(row);
+      row.classList.add('grid-row');
+    }
 
-    this.actionQueue.bindViewControllerLogic(this.viewGrid,this.logicGrid);
-
-    var xhttp = new XMLHttpRequest();
-    xhttp.onreadystatechange = this.loadPuzzle.bind(this,xhttp);
-    xhttp.open("GET", "puzzle.txt", true);
-    xhttp.send();
+    // attach event handlers to container and focustrap
+    var trapFocus = function() {this.focusTrap.focus();};
+    this.wrapper.addEventListener(
+      'click', trapFocus.bind(this));
+    this.focusTrap.addEventListener(
+      'keydown', this.keypressHandler.bind(this));
 
   }
 
-  loadPuzzle(xhttp) {
-    if (xhttp.readyState == 4 && xhttp.status == 200) {
-      let board = JSON.parse(xhttp.responseText);
-      let k = 0;
-      for (var i = 0; i < 9; i++) {
-        for (var j = 0; j < 9; j++) {
-          if (board[i][j]) {
-            this.logicGrid.squareList[k].enterGuessFcn(board[i][j] - 1, true);
-          }
-          k++;
+  keypressHandler(event) {
+    if (!event.ctrlKey & !event.shiftKey & !event.altKey & !event.metaKey){
+      if (this.activeGridSquare) {
+        if (/^[1-9]$/.test(event.key)) {
+          this.activeGridSquare.enterGuess(parseInt(event.key));
+        } else if (event.key == 'Delete' || event.key == 'Backspace') {
+          this.activeGridSquare.enterGuess(0);
         }
       }
-      this.logicGrid.checkConstraints();
-      this.container.appendChild(this.viewGrid.wrapper);
+    } else if  (event.ctrlKey & !event.shiftKey & !event.altKey & !event.metaKey) {
+      if (event.key == 'z' || event.key == 'Z') {
+        this.actionQueue.undo();
+      }
+      if (event.key == 'y' || event.key == 'Y') {
+        this.actionQueue.redo();
+      }
     }
   }
-
 }
