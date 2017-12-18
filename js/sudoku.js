@@ -305,9 +305,6 @@ class Constraint {
   check() {
     let numOptions = this.candidateList.reduce((sum,candidate) => sum + candidate.valid, 0);
     this.candidateList.forEach(candidate => {
-      candidate.setConflict(this.type,numOptions == 0);
-    });
-    this.candidateList.forEach(candidate => {
       candidate.setFlagFcn(this.type + '-solve-flag',(numOptions == 1) && candidate.valid);
     });
 
