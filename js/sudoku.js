@@ -76,7 +76,7 @@ class HTMLGrid {
     this.wrapper.addEventListener(
       'click', trapFocus.bind(this));
     this.focusTrap.addEventListener(
-      'keypress', this.keypressHandler.bind(this));
+      'keydown', this.keypressHandler.bind(this));
 
   }
 
