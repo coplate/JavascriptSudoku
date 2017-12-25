@@ -28,6 +28,10 @@ class Sudoku {
         for (var j = 0; j < 9; j++) {
           if (board[i][j]) {
             this.logicGrid.squareList[k].enterGuessFcn(board[i][j] - 1, true);
+            var clue = new Constraint('clue');
+            clue.candidateList.push(this.logicGrid.squareList[k].candidateList[board[i][j] - 1]);
+            this.logicGrid.squareList[k].candidateList[board[i][j] - 1].constraintList.push(clue);
+            this.logicGrid.constraintList.push(clue);
           }
           k++;
         }
@@ -37,6 +41,48 @@ class Sudoku {
     }
   }
 
+}
+
+numValidCandidates = function(constraint) {
+  return constraint.candidateList.reduce((acc,candidate) => acc + !candidate.eliminated,0);
+}
+
+smaller = function(constraintA,constraintB) {
+  if (numValidCandidates(constraintA) > numValidCandidates(constraintB)) {
+    return constraintB;
+  } else {
+    return constraintA;
+  }
+}
+
+solveBoard = function(constraintList,solutionList) {
+  var validConstraints = constraintList.filter(constraint => !constraint.satisfied);
+  if (validConstraints.length == 0) {
+    return 1;
+  }
+  var selectedConstraint = validConstraints.reduce(smaller);
+  var numValid = numValidCandidates(selectedConstraint);
+  if (numValid == 0) {
+    return 0;
+  }
+  var validCandidates = selectedConstraint.candidateList.filter(candidate => !candidate.eliminated);
+
+  for (var i = 0; i<validCandidates.length; i++) {
+    let candidate = validCandidates[i];
+    solutionList.push(candidate);
+    var validSubConstraints = candidate.constraintList.filter(constraint => !constraint.satisfied);
+    var validElimCandidates = validSubConstraints.reduce((acc,constraint) => acc.concat(constraint.candidateList),[] )
+                                .filter(candidate => !candidate.eliminated);
+    validElimCandidates.forEach(candidate => {candidate.eliminated = true;});
+    validSubConstraints.forEach(constraint => {constraint.satisfied = true;});
+
+    var count = solveBoard(validConstraints,solutionList);
+    if (count > 0) {return count;}
+    validElimCandidates.forEach(candidate => {candidate.eliminated = false;});
+    validSubConstraints.forEach(constraint => {constraint.satisfied = false;});
+    solutionList.pop();
+  }
+  return 0;
 }
 
 class GridSquareWrapper {
@@ -89,6 +135,7 @@ class GridSquareWrapper {
 
 class GridSquare {
   constructor() {
+    this.id = null;
     this.guessedCandidate = null;
     this.prefilled = false;
     this.candidateList = [];
@@ -172,6 +219,8 @@ class Candidate {
     this.setFlagFcn = null;
     this.setHiddenFcn = null;
     this.actionQueue = null;
+
+    this.eliminated = false;
   }
   get valid() {
     if (this.toggled != null) {
@@ -235,6 +284,8 @@ class Constraint {
   constructor(type) {
     this.candidateList = [];
     this.type = type;
+
+    this.satisfied = false;
   }
 
   updateCandidates() {
@@ -354,6 +405,7 @@ class LogicGrid {
       for (var j = 0; j < 9; j++) {
         // construct inner candidate table
         var gridSquare = new GridSquare();
+        gridSquare.id = 'R' + i + 'C' + j;
         this.squareList.push(gridSquare);
         for (var k = 0; k < 9; k++) {
           // create candidate and add to corresponding square
