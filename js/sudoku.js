@@ -13,11 +13,25 @@ class Sudoku {
 
     this.actionQueue.bindViewControllerLogic(this.viewGrid,this.logicGrid);
 
+    this.logicGrid.checkConstraints();
+    this.container.appendChild(this.viewGrid.wrapper);
+
     var xhttp = new XMLHttpRequest();
     xhttp.onreadystatechange = this.loadPuzzle.bind(this,xhttp);
     xhttp.open("GET", "puzzle.txt", true);
     xhttp.send();
 
+  }
+
+  solvePuzzle() {
+    var solutionList = [];
+    solveBoard(this.logicGrid.constraintList,solutionList);
+    this.loadSolution(solutionList);
+  }
+
+  loadSolution(solutionList) {
+    solutionList.forEach(candidate => {candidate.parent.enterGuess(candidate.id)});
+    this.viewGrid.focusTrap.focus();
   }
 
   loadPuzzle(xhttp) {
@@ -38,9 +52,21 @@ class Sudoku {
       }
       this.logicGrid.checkConstraints();
       this.container.appendChild(this.viewGrid.wrapper);
+
+      //var id = setInterval(this.solvePuzzle.bind(this),1000)
+      //this.solvePuzzle();
     }
   }
 
+}
+
+var f = [];
+function factorial (n) {
+  if (n == 0 || n == 1)
+    return 1;
+  if (f[n] > 0)
+    return f[n];
+  return f[n] = factorial(n-1) * n;
 }
 
 numValidCandidates = function(constraint) {
@@ -55,6 +81,19 @@ smaller = function(constraintA,constraintB) {
   }
 }
 
+function shuffle (array) {
+  var i = 0
+    , j = 0
+    , temp = null
+
+  for (i = array.length - 1; i > 0; i -= 1) {
+    j = Math.floor(Math.random() * (i + 1))
+    temp = array[i]
+    array[i] = array[j]
+    array[j] = temp
+  }
+}
+
 solveBoard = function(constraintList,solutionList) {
   var validConstraints = constraintList.filter(constraint => !constraint.satisfied);
   if (validConstraints.length == 0) {
@@ -66,6 +105,7 @@ solveBoard = function(constraintList,solutionList) {
     return 0;
   }
   var validCandidates = selectedConstraint.candidateList.filter(candidate => !candidate.eliminated);
+  shuffle(validCandidates);
 
   for (var i = 0; i<validCandidates.length; i++) {
     let candidate = validCandidates[i];
@@ -78,12 +118,14 @@ solveBoard = function(constraintList,solutionList) {
 
     var count = solveBoard(validConstraints,solutionList);
     if (count > 0) {return count;}
+
     validElimCandidates.forEach(candidate => {candidate.eliminated = false;});
     validSubConstraints.forEach(constraint => {constraint.satisfied = false;});
     solutionList.pop();
   }
   return 0;
 }
+
 
 class GridSquareWrapper {
   constructor(divElement, parent) {
@@ -512,6 +554,7 @@ class HTMLGrid {
       'click', trapFocus.bind(this));
     this.focusTrap.addEventListener(
       'keydown', this.keypressHandler.bind(this));
+
 
   }
 
