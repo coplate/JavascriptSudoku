@@ -1,4 +1,4 @@
 # JavascriptSudoku
-Implementation of sudoku to teach myself javascript
+Forked from jnafzig/JavascriptSudoku
 
-Go to https://jnafzig.github.io/JavascriptSudoku/ to play.
+Practicing javascript and sudoku, trying to get better at both.
