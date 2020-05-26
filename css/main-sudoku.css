@@ -51,6 +51,9 @@ td.grid-square {
 td.grid-square .cell-wrapper{
 	border: 3px solid transparent;
 }
+td.grid-square .cell-wrapper:not(.prefilled) .guess{
+	color: green;
+}
 
 td div{
 	position: absolute;
