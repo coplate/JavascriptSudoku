@@ -585,13 +585,28 @@ class HTMLGrid {
 
   }
 
-  keypressHandler(event) {
+keypressHandler(event) {
     if (!event.ctrlKey & !event.shiftKey & !event.altKey & !event.metaKey){
       if (this.activeGridSquare) {
         if (/^[1-9]$/.test(event.key)) {
           this.activeGridSquare.enterGuess(parseInt(event.key));
         } else if (event.key == 'Delete' || event.key == 'Backspace') {
           this.activeGridSquare.enterGuess(0);
+        } else if (event.key == 'ArrowLeft' || event.key == 'ArrowUp' ||  event.key == 'ArrowRight' || event.key == 'ArrowDown' ) {
+          var activeHtmlRow = this.activeGridSquare.divElement.closest("tr");
+          var activeHtmlCell = this.activeGridSquare.divElement.closest("td");
+          var tableBody = activeHtmlRow.closest("tbody")
+          var columnIndex = Array.prototype.indexOf.call(activeHtmlRow.children, activeHtmlCell);
+          var rowIndex = Array.prototype.indexOf.call(tableBody.children, activeHtmlRow);
+
+
+          var newColumnIndex = columnIndex;
+          var newRowIndex = rowIndex;
+          if (event.key == 'ArrowLeft'){ newColumnIndex = columnIndex-1;}
+          if (event.key == 'ArrowRight'){ newColumnIndex = columnIndex+1;}
+          if (event.key == 'ArrowUp'){ newRowIndex = rowIndex-1;}
+          if (event.key == 'ArrowDown'){ newRowIndex = rowIndex+1;}
+          tableBody.children[newRowIndex].children[newColumnIndex].children[0].click();
         }
       }
     } else if  (event.ctrlKey & !event.shiftKey & !event.altKey & !event.metaKey) {
