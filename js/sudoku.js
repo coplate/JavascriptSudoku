@@ -3,6 +3,7 @@ class Sudoku {
 
     const urlParams = new URLSearchParams(window.location.search);
     const puzzle = urlParams.get('puzzle');
+
     // build html structure
     this.container = document.getElementById(divContainerId);
     this.viewGrid = new HTMLGrid(this.container.offsetWidth);
@@ -17,6 +18,7 @@ class Sudoku {
 
     this.logicGrid.checkConstraints();
     this.container.appendChild(this.viewGrid.wrapper);
+
     if( !puzzle ){
         var xhttp = new XMLHttpRequest();
         xhttp.onreadystatechange = this.loadXhttpPuzzle.bind(this,xhttp);
@@ -26,40 +28,32 @@ class Sudoku {
         this.loadQueryPuzzle(puzzle);
     }
 
+
   }
 
-  loadQueryPuzzle(puzzle) {
-    let k = 0;
-    for (var i = 0; i < 9; i++) { // column
-      for (var j = 0; j < 9; j++) { // row
-        let cell = j + (i*9);
-        let value =puzzle.substring(cell, cell+1);
-
-        if ( /^[1-9]$/.test(value) ) {
-          this.logicGrid.squareList[k].enterGuessFcn(value - 1, true);
-          var clue = new Constraint('clue');
-          clue.candidateList.push(this.logicGrid.squareList[k].candidateList[value - 1]);
-          this.logicGrid.squareList[k].candidateList[value - 1].constraintList.push(clue);
-          this.logicGrid.constraintList.push(clue);
-        }
-        k++;
-      }
-    }
-    this.logicGrid.checkConstraints();
-    this.container.appendChild(this.viewGrid.wrapper);
+  solvePuzzle() {
+    var solutionList = [];
+    solveBoard(this.logicGrid.constraintList,solutionList);
+    this.loadSolution(solutionList);
   }
 
-  loadXhttpPuzzle(xhttp) {
-    if (xhttp.readyState == 4 && xhttp.status == 200) {
-      let board = JSON.parse(xhttp.responseText);
+  loadSolution(solutionList) {
+    solutionList.forEach(candidate => {candidate.parent.enterGuess(candidate.id)});
+    this.viewGrid.focusTrap.focus();
+  }
+
+    loadQueryPuzzle(puzzle) {
       let k = 0;
-      for (var i = 0; i < 9; i++) {
-        for (var j = 0; j < 9; j++) {
-          if (board[i][j]) {
-            this.logicGrid.squareList[k].enterGuessFcn(board[i][j] - 1, true);
+      for (var i = 0; i < 9; i++) { // column
+        for (var j = 0; j < 9; j++) { // row
+          let cell = j + (i*9);
+          let value =puzzle.substring(cell, cell+1);
+
+          if ( /^[1-9]$/.test(value) ) {
+            this.logicGrid.squareList[k].enterGuessFcn(value - 1, true);
             var clue = new Constraint('clue');
-            clue.candidateList.push(this.logicGrid.squareList[k].candidateList[board[i][j] - 1]);
-            this.logicGrid.squareList[k].candidateList[board[i][j] - 1].constraintList.push(clue);
+            clue.candidateList.push(this.logicGrid.squareList[k].candidateList[value - 1]);
+            this.logicGrid.squareList[k].candidateList[value - 1].constraintList.push(clue);
             this.logicGrid.constraintList.push(clue);
           }
           k++;
@@ -67,9 +61,96 @@ class Sudoku {
       }
       this.logicGrid.checkConstraints();
       this.container.appendChild(this.viewGrid.wrapper);
-
     }
+
+    loadXhttpPuzzle(xhttp) {
+      if (xhttp.readyState == 4 && xhttp.status == 200) {
+        let board = JSON.parse(xhttp.responseText);
+        let k = 0;
+        for (var i = 0; i < 9; i++) {
+          for (var j = 0; j < 9; j++) {
+            if (board[i][j]) {
+              this.logicGrid.squareList[k].enterGuessFcn(board[i][j] - 1, true);
+              var clue = new Constraint('clue');
+              clue.candidateList.push(this.logicGrid.squareList[k].candidateList[board[i][j] - 1]);
+              this.logicGrid.squareList[k].candidateList[board[i][j] - 1].constraintList.push(clue);
+              this.logicGrid.constraintList.push(clue);
+            }
+            k++;
+          }
+        }
+        this.logicGrid.checkConstraints();
+        this.container.appendChild(this.viewGrid.wrapper);
+
+      }
+    }
+
+}
+
+var f = [];
+function factorial (n) {
+  if (n == 0 || n == 1)
+    return 1;
+  if (f[n] > 0)
+    return f[n];
+  return f[n] = factorial(n-1) * n;
+}
+
+numValidCandidates = function(constraint) {
+  return constraint.candidateList.reduce((acc,candidate) => acc + !candidate.eliminated,0);
+}
+
+smaller = function(constraintA,constraintB) {
+  if (numValidCandidates(constraintA) > numValidCandidates(constraintB)) {
+    return constraintB;
+  } else {
+    return constraintA;
   }
+}
+
+function shuffle (array) {
+  var i = 0
+    , j = 0
+    , temp = null
+
+  for (i = array.length - 1; i > 0; i -= 1) {
+    j = Math.floor(Math.random() * (i + 1))
+    temp = array[i]
+    array[i] = array[j]
+    array[j] = temp
+  }
+}
+
+solveBoard = function(constraintList,solutionList) {
+  var validConstraints = constraintList.filter(constraint => !constraint.satisfied);
+  if (validConstraints.length == 0) {
+    return 1;
+  }
+  var selectedConstraint = validConstraints.reduce(smaller);
+  var numValid = numValidCandidates(selectedConstraint);
+  if (numValid == 0) {
+    return 0;
+  }
+  var validCandidates = selectedConstraint.candidateList.filter(candidate => !candidate.eliminated);
+  shuffle(validCandidates);
+
+  for (var i = 0; i<validCandidates.length; i++) {
+    let candidate = validCandidates[i];
+    solutionList.push(candidate);
+    var validSubConstraints = candidate.constraintList.filter(constraint => !constraint.satisfied);
+    var validElimCandidates = validSubConstraints.reduce((acc,constraint) => acc.concat(constraint.candidateList),[] )
+                                .filter(candidate => !candidate.eliminated);
+    validElimCandidates.forEach(candidate => {candidate.eliminated = true;});
+    validSubConstraints.forEach(constraint => {constraint.satisfied = true;});
+
+    var count = solveBoard(validConstraints,solutionList);
+    if (count > 0) {return count;}
+
+    validElimCandidates.forEach(candidate => {candidate.eliminated = false;});
+    validSubConstraints.forEach(constraint => {constraint.satisfied = false;});
+    solutionList.pop();
+  }
+  return 0;
 }
 
 
@@ -504,13 +585,28 @@ class HTMLGrid {
 
   }
 
-  keypressHandler(event) {
+keypressHandler(event) {
     if (!event.ctrlKey & !event.shiftKey & !event.altKey & !event.metaKey){
       if (this.activeGridSquare) {
         if (/^[1-9]$/.test(event.key)) {
           this.activeGridSquare.enterGuess(parseInt(event.key));
         } else if (event.key == 'Delete' || event.key == 'Backspace') {
           this.activeGridSquare.enterGuess(0);
+        } else if (event.key == 'ArrowLeft' || event.key == 'ArrowUp' ||  event.key == 'ArrowRight' || event.key == 'ArrowDown' ) {
+          var activeHtmlRow = this.activeGridSquare.divElement.closest("tr");
+          var activeHtmlCell = this.activeGridSquare.divElement.closest("td");
+          var tableBody = activeHtmlRow.closest("tbody")
+          var columnIndex = Array.prototype.indexOf.call(activeHtmlRow.children, activeHtmlCell);
+          var rowIndex = Array.prototype.indexOf.call(tableBody.children, activeHtmlRow);
+
+
+          var newColumnIndex = columnIndex;
+          var newRowIndex = rowIndex;
+          if (event.key == 'ArrowLeft'){ newColumnIndex = columnIndex-1;}
+          if (event.key == 'ArrowRight'){ newColumnIndex = columnIndex+1;}
+          if (event.key == 'ArrowUp'){ newRowIndex = rowIndex-1;}
+          if (event.key == 'ArrowDown'){ newRowIndex = rowIndex+1;}
+          tableBody.children[newRowIndex].children[newColumnIndex].children[0].click();
         }
       }
     } else if  (event.ctrlKey & !event.shiftKey & !event.altKey & !event.metaKey) {
