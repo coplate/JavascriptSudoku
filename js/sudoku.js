@@ -603,7 +603,14 @@ keypressHandler(event) {
     if (!event.ctrlKey & !event.shiftKey & !event.altKey & !event.metaKey){
       if (this.activeGridSquare) {
         if (/^[1-9]$/.test(event.key)) {
-          this.activeGridSquare.enterGuess(parseInt(event.key));
+          let value = parseInt(event.key);
+          if( this.mode == "normal" ){
+            this.activeGridSquare.enterGuess(value);
+          }else if( this.mode == "candidates" ){
+            let candidateWrapper = this.activeGridSquare.candidateWrappers[value-1];
+            candidateWrapper.clickFunction();
+          }
+
         } else if (event.key == 'Delete' || event.key == 'Backspace') {
           this.activeGridSquare.enterGuess(0);
         } else if (event.key == 'ArrowLeft' || event.key == 'ArrowUp' ||  event.key == 'ArrowRight' || event.key == 'ArrowDown' ) {
