@@ -33,6 +33,7 @@ class Sudoku {
   setMode(button, mode) {
     clearClass("selected-mode");
     button.classList.add("selected-mode");
+    this.viewGrid.setMode(mode);
   }
 
   solvePuzzle() {
@@ -514,6 +515,7 @@ class LogicGrid {
 
 class HTMLGrid {
   constructor(width) {
+    this.mode = "normal";
     this.activeGridSquare = null;
     this.gridSquareWrappers = [];
     this.actionQueue = null;
@@ -594,7 +596,9 @@ class HTMLGrid {
 
 
   }
-
+setMode(mode){
+  this.mode = mode;
+}
 keypressHandler(event) {
     if (!event.ctrlKey & !event.shiftKey & !event.altKey & !event.metaKey){
       if (this.activeGridSquare) {
