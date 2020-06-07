@@ -30,6 +30,10 @@ class Sudoku {
 
 
   }
+  setMode(button, mode) {
+    clearClass("selected-mode");
+    button.classList.add("selected-mode");
+  }
 
   solvePuzzle() {
     var solutionList = [];
@@ -87,6 +91,12 @@ class Sudoku {
 
 }
 
+function clearClass(className) {
+  var elements = document.getElementsByClassName(className);
+  while(elements.length > 0){
+      elements[0].classList.remove(className);
+  }
+}
 var f = [];
 function factorial (n) {
   if (n == 0 || n == 1)

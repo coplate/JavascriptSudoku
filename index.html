@@ -18,6 +18,10 @@
         <button id="solve-btn" onclick="JSudoku.solvePuzzle()" class="btn">Solve Puzzle</button>
         <button id="undo-btn" onclick="JSudoku.actionQueue.undo()" class="btn">Undo</button>
         <button id="redo-btn" onclick="JSudoku.actionQueue.redo()" class="btn">Redo</button>
+        <br />
+        <button id="normal-btn" onclick="JSudoku.setMode(this, 'normal')" class="btn selected-mode">Normal</button>
+        <button id="candidates-btn" onclick="JSudoku.setMode(this, 'candidates')" class="btn">Candidates</button>
+
     </div>
     <script>var JSudoku = new Sudoku('game-area')</script>
 </body>

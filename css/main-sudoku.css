@@ -147,3 +147,8 @@ body {
     background-color: rgba(0,0,0,0.2);
     border-color: rgba(0,0,0,0.3);
 }
+.selected-mode {
+    border-width: 3px;
+    font-weight: bold;
+
+}
