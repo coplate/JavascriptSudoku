@@ -623,11 +623,13 @@ keypressHandler(event) {
 
           var newColumnIndex = columnIndex;
           var newRowIndex = rowIndex;
-          if (event.key == 'ArrowLeft'){ newColumnIndex = columnIndex-1;}
-          if (event.key == 'ArrowRight'){ newColumnIndex = columnIndex+1;}
-          if (event.key == 'ArrowUp'){ newRowIndex = rowIndex-1;}
-          if (event.key == 'ArrowDown'){ newRowIndex = rowIndex+1;}
+          if (event.key == 'ArrowLeft'){ newColumnIndex = ((columnIndex+9-1)%9);} // 8=> 7, 0=> 8
+          if (event.key == 'ArrowRight'){ newColumnIndex = ((columnIndex+1)%9);}
+          if (event.key == 'ArrowUp'){ newRowIndex = ((rowIndex+9-1)%9);}
+          if (event.key == 'ArrowDown'){ newRowIndex = ((rowIndex+1)%9);}
+
           tableBody.children[newRowIndex].children[newColumnIndex].children[0].click();
+
         }
       }
     } else if  (event.ctrlKey & !event.shiftKey & !event.altKey & !event.metaKey) {
