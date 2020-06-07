@@ -30,6 +30,11 @@ class Sudoku {
 
 
   }
+  setMode(button, mode) {
+    clearClass("selected-mode");
+    button.classList.add("selected-mode");
+    this.viewGrid.setMode(mode);
+  }
 
   solvePuzzle() {
     var solutionList = [];
@@ -87,6 +92,12 @@ class Sudoku {
 
 }
 
+function clearClass(className) {
+  var elements = document.getElementsByClassName(className);
+  while(elements.length > 0){
+      elements[0].classList.remove(className);
+  }
+}
 var f = [];
 function factorial (n) {
   if (n == 0 || n == 1)
@@ -504,6 +515,7 @@ class LogicGrid {
 
 class HTMLGrid {
   constructor(width) {
+    this.mode = "normal";
     this.activeGridSquare = null;
     this.gridSquareWrappers = [];
     this.actionQueue = null;
@@ -584,12 +596,21 @@ class HTMLGrid {
 
 
   }
-
+setMode(mode){
+  this.mode = mode;
+}
 keypressHandler(event) {
     if (!event.ctrlKey & !event.shiftKey & !event.altKey & !event.metaKey){
       if (this.activeGridSquare) {
         if (/^[1-9]$/.test(event.key)) {
-          this.activeGridSquare.enterGuess(parseInt(event.key));
+          let value = parseInt(event.key);
+          if( this.mode == "normal" ){
+            this.activeGridSquare.enterGuess(value);
+          }else if( this.mode == "candidates" ){
+            let candidateWrapper = this.activeGridSquare.candidateWrappers[value-1];
+            candidateWrapper.clickFunction();
+          }
+
         } else if (event.key == 'Delete' || event.key == 'Backspace') {
           this.activeGridSquare.enterGuess(0);
         } else if (event.key == 'ArrowLeft' || event.key == 'ArrowUp' ||  event.key == 'ArrowRight' || event.key == 'ArrowDown' ) {
@@ -602,11 +623,13 @@ keypressHandler(event) {
 
           var newColumnIndex = columnIndex;
           var newRowIndex = rowIndex;
-          if (event.key == 'ArrowLeft'){ newColumnIndex = columnIndex-1;}
-          if (event.key == 'ArrowRight'){ newColumnIndex = columnIndex+1;}
-          if (event.key == 'ArrowUp'){ newRowIndex = rowIndex-1;}
-          if (event.key == 'ArrowDown'){ newRowIndex = rowIndex+1;}
+          if (event.key == 'ArrowLeft'){ newColumnIndex = ((columnIndex+9-1)%9);} // 8=> 7, 0=> 8
+          if (event.key == 'ArrowRight'){ newColumnIndex = ((columnIndex+1)%9);}
+          if (event.key == 'ArrowUp'){ newRowIndex = ((rowIndex+9-1)%9);}
+          if (event.key == 'ArrowDown'){ newRowIndex = ((rowIndex+1)%9);}
+
           tableBody.children[newRowIndex].children[newColumnIndex].children[0].click();
+
         }
       }
     } else if  (event.ctrlKey & !event.shiftKey & !event.altKey & !event.metaKey) {
