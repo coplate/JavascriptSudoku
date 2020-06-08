@@ -4,13 +4,34 @@ class Sudoku {
     const urlParams = new URLSearchParams(window.location.search);
     const puzzle = urlParams.get('puzzle');
 
+    const diagonalFlag = urlParams.get('D') || "0";
+    const killerFlagList = urlParams.getAll('K') || [];
+    //const chessFlag = urlParams.getAll('Z') || [];
+
+
+    var cageList = [];
+    for (var klc = 0; klc < killerFlagList.length; klc++) {
+        const arrayOfStrings = killerFlagList[klc].split(".");
+        cageList[klc] = {
+            "sum":arrayOfStrings[0],
+            "values":arrayOfStrings[1].match(/(..?)/g),
+            fresh: true
+        };
+
+    }
+    console.log(cageList);
+    let optionFlags = {
+        "diagonalFlag": diagonalFlag,
+        "killerCages": cageList
+    };
+
     // build html structure
     this.container = document.getElementById(divContainerId);
-    this.viewGrid = new HTMLGrid(this.container.offsetWidth);
+    this.viewGrid = new HTMLGrid(this.container.offsetWidth, optionFlags);
 
 
     // build logic structure and CommandQueue
-    this.logicGrid = new LogicGrid();
+    this.logicGrid = new LogicGrid(optionFlags);
     this.actionQueue = new CommandQueue(
             this.logicGrid.checkConstraints.bind(this.logicGrid));
 
@@ -193,15 +214,19 @@ class GridSquareWrapper {
 
   // view
   showGuess(k) {
-    this.divElement.childNodes[0].innerHTML = (k + 1);
-    this.divElement.childNodes[1].hidden = true;
-    this.divElement.childNodes[0].hidden = false;
+    let guessDiv = this.divElement.querySelector('.guess');
+    let candidatesDiv = this.divElement.querySelector('.candidates');
+    guessDiv.innerHTML = (k + 1);
+    candidatesDiv.hidden = true;
+    guessDiv.hidden = false;
   }
 
   hideGuess(k) {
-    this.divElement.childNodes[0].hidden = true;
-    this.divElement.childNodes[1].hidden = false;
-    this.divElement.childNodes[0].innerHTML = '';
+    let guessDiv = this.divElement.querySelector('.guess');
+    let candidatesDiv = this.divElement.querySelector('.candidates');
+    guessDiv.hidden = true;
+    candidatesDiv.hidden = false;
+    guessDiv.innerHTML = '';
   }
 
   setFlag(flag,val) {
@@ -454,13 +479,15 @@ class CommandQueue {
 }
 
 class LogicGrid {
-  constructor() {
+  constructor(optionFlags) {
     this.constraintList = [];
     this.squareList = [];
     var boxConstraints = [];
     var rowConstraints = [];
     var colConstraints = [];
     var cellConstraints = [];
+    var diagonalConstraints = [];
+    var cageConstraints = [];
 
     // create constraints
     for (var i = 0; i < 9; i++) {
@@ -468,16 +495,30 @@ class LogicGrid {
       rowConstraints[i] = [];
       colConstraints[i] = [];
       cellConstraints[i] = [];
+      if( optionFlags["diagonalFlag"]  & ( i+1 ) ){ // D=1 for first diagonal, D=2 for Second, D=3 for both
+        diagonalConstraints[i] = [];
+      }
       for (var j = 0; j < 9; j++) {
         boxConstraints[i][j] = new Constraint('box');
         rowConstraints[i][j] = new Constraint('row');
         colConstraints[i][j] = new Constraint('col');
         cellConstraints[i][j] = new Constraint('cell');
+        if( optionFlags["diagonalFlag"]  & ( i+1 ) ){  // D=1 for first diagonal, D=2 for Second, D=3 for both
+            diagonalConstraints[i][j] = new Constraint('diagonal'); // i=1 is R0C0-R8C8, i=2 is R0C8-R9C0 is box#, j is Candidate Value#
+            this.constraintList.push(diagonalConstraints[i][j]);
+        }
         this.constraintList.push(boxConstraints[i][j]);
         this.constraintList.push(rowConstraints[i][j]);
         this.constraintList.push(colConstraints[i][j]);
         this.constraintList.push(cellConstraints[i][j]);
       }
+    }
+    for (var klc = 0; klc < optionFlags["killerCages"].length; klc++) {
+        cageConstraints[klc] = [];
+        for (var j = 0; j < 9; j++) {
+         cageConstraints[klc][j] = new Constraint('cage'); // i is cage#, j is Candidate Value#
+         this.constraintList.push(cageConstraints[klc][j]);
+        }
     }
 
     // construct outer sudoku grid table
@@ -492,16 +533,39 @@ class LogicGrid {
           var candidate = new Candidate(gridSquare,k);
           gridSquare.candidateList.push(candidate);
 
+          cellConstraints[i][j].candidateList.push(candidate);
+
           // create link between constraints and candidates
           let boxNum = Math.floor(i/3) + Math.floor(j/3) * 3;
-          boxConstraints[boxNum][k].candidateList.push(candidate);
-          rowConstraints[i][k].candidateList.push(candidate);
-          colConstraints[j][k].candidateList.push(candidate);
-          cellConstraints[i][j].candidateList.push(candidate);
+          boxConstraints[boxNum][k].candidateList.push(candidate);// Move onto box B and say that  "the number N in RxCy" is a candidate of this Box.
+          rowConstraints[i][k].candidateList.push(candidate);// Move onto row R and say that  "the number N in RxCy" is a candidate of this Row.
+          colConstraints[j][k].candidateList.push(candidate);// Move onto col C and say that  "the number N in RxCy" is a candidate of this Col.
+          // More generally, say that
+          // For each region, if the Cell R0C0 is in the region, then  "the number N in Cell RxCy" is a possible solution to this region.
+          // and then that candidates constraintList contains all of the regions that cell is a member of.
+
           candidate.constraintList = [ boxConstraints[boxNum][k],
                                        rowConstraints[i][k],
                                        colConstraints[j][k],
                                        cellConstraints[i][j] ];
+
+          for (var klc = 0; klc < optionFlags["killerCages"].length; klc++) {
+            if( optionFlags["killerCages"][klc]["values"].includes(""+i+""+j) ){
+              console.log(""+i+""+j);
+               cageConstraints[klc][k].candidateList.push(candidate);
+               candidate.constraintList.push(cageConstraints[klc][k]);
+            }
+          }
+          if( (optionFlags["diagonalFlag"] > 0) ){
+            if( i == j && (optionFlags["diagonalFlag"] & 1) ){
+              diagonalConstraints[0][k].candidateList.push(candidate);
+              candidate.constraintList.push(diagonalConstraints[0][k]);
+            }
+            if( i == (8-j) && (optionFlags["diagonalFlag"] & 2) ){
+              diagonalConstraints[1][k].candidateList.push(candidate);
+              candidate.constraintList.push(diagonalConstraints[1][k]);
+            }
+          }
 
         }
       }
@@ -514,7 +578,7 @@ class LogicGrid {
 }
 
 class HTMLGrid {
-  constructor(width) {
+  constructor(width, optionFlags) {
     this.mode = "normal";
     this.activeGridSquare = null;
     this.gridSquareWrappers = [];
@@ -541,6 +605,37 @@ class HTMLGrid {
 
         var gridSquareWrapper = new GridSquareWrapper(wrapper,this)
         this.gridSquareWrappers.push(gridSquareWrapper);
+
+        for (var klc = 0; klc < optionFlags["killerCages"].length; klc++) {
+          if( optionFlags["killerCages"][klc]["values"].includes(""+i+""+j) ){
+            var cageDiv = document.createElement('div');
+            wrapper.appendChild(cageDiv);
+            if( optionFlags["killerCages"][klc].fresh ){
+                cageDiv.innerHTML=optionFlags["killerCages"][klc].sum;
+                optionFlags["killerCages"][klc].fresh=false;
+            }
+            cageDiv.style.fontSize = (width*0.018) + 'px';
+            cageDiv.classList.add('cage');
+            //cageDiv.style.outlineStyle = "dashed";
+            if(! optionFlags["killerCages"][klc]["values"].includes(""+((i+9+1)%9)+""+((j+9)%9)) ){
+                cageDiv.style.borderBottom = " dotted 3px";
+            }
+            if(! optionFlags["killerCages"][klc]["values"].includes(""+((i+9-1)%9)+""+((j+9)%9)) ){
+                cageDiv.style.borderTop = " dotted 3px";
+            }
+            if(! optionFlags["killerCages"][klc]["values"].includes(""+((i+9)%9)+""+((j+9+1)%9)) ){
+                cageDiv.style.borderRight = " dotted 3px";
+            }
+            if(! optionFlags["killerCages"][klc]["values"].includes(""+((i+9)%9)+""+((j+9-1)%9)) ){
+                cageDiv.style.borderLeft = " dotted 3px";
+            }
+
+
+
+            // cage border, remove the left, right, etc if the neighbor is part of the same cage
+          }
+        }
+
 
         var guessDiv = document.createElement('div');
         wrapper.appendChild(guessDiv);
@@ -587,6 +682,17 @@ class HTMLGrid {
       row.classList.add('grid-row');
     }
 
+     if( optionFlags["diagonalFlag"]  >0  ){ // D=1 for first diagonal, D=2 for Second, D=3 for both
+      var diagonalLine1 = document.createElement('div');
+          diagonalLine1.classList.add('diagonal1');
+          this.wrapper.appendChild(diagonalLine1);
+    }
+    if( optionFlags["diagonalFlag"]  & 2 ){ // D=1 for first diagonal, D=2 for Second, D=3 for both
+        var diagonalLine2 = document.createElement('div');
+        diagonalLine2.classList.add('diagonal2');
+        this.wrapper.appendChild(diagonalLine2);
+
+    }
     // attach event handlers to container and focustrap
     var trapFocus = function() {this.focusTrap.focus();};
     this.wrapper.addEventListener(

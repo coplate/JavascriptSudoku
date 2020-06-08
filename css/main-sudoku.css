@@ -152,3 +152,19 @@ body {
     font-weight: bold;
 
 }
+
+.cage {
+  /*width: 99%;*/
+  margin: -2px;
+  text-align: left;
+  text-align: top;
+}
+
+.diagonal1 {
+position: absolute;
+    left: -105px; top: 424px; width: 1060px; height: 2px; transform: rotate(45deg); background-color: lightblue; border-radius: 2px;
+}
+.diagonal2 {
+position: absolute;
+    left: -105px; top: 424px; width: 1060px; height: 2px; transform: rotate(-45deg); background-color: lightblue; border-radius: 2px;
+}
