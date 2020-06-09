@@ -379,12 +379,13 @@ class Candidate {
     this.valid = !this.constraintList.some(
       constraint => constraint.candidateList.some(
         candidate => (candidate != this) && candidate.guessed));
+
     this.setConflict('collision',(this.guessed && !this.validProp) ||
                            (this.valid && !this.validProp) );
   }
 
 }
-
+/* A "Constraint" is, for example, Where can digit 8 go in this Region */
 class Constraint {
   constructor(type) {
     this.candidateList = [];
@@ -398,6 +399,7 @@ class Constraint {
   }
 
   check() {
+    /* If this constraint is for digit 8, then check to see if there is only 1 valid candidate for digit 8 */
     let numOptions = this.candidateList.reduce((sum,candidate) => sum + candidate.valid, 0);
     this.candidateList.forEach(candidate => {
       candidate.setFlagFcn(this.type + '-solve-flag',(numOptions == 1) && candidate.valid);
