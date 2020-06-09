@@ -94,7 +94,7 @@ td.grid-square .cell-wrapper.collision-conflict-flag{
 tr.grid-row:nth-child(3), tr.grid-row:nth-child(6) {
   border-bottom: 2px solid gray;
 }
-td.candidate .candidate-wrapper.cage-solve-flag,
+//td.candidate .candidate-wrapper.cage-solve-flag,
 td.candidate .candidate-wrapper.diagonal-solve-flag,
 td.candidate .candidate-wrapper.box-solve-flag,
 td.candidate .candidate-wrapper.row-solve-flag,
