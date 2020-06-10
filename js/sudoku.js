@@ -400,6 +400,7 @@ class Constraint {
 
   check() {
     /* If this constraint is for digit 8, then check to see if there is only 1 valid candidate for digit 8 */
+    /* This is currently not working as expected for Cages, as cages are not always 9 digits big. this logic expects 9 digit regions */
     let numOptions = this.candidateList.reduce((sum,candidate) => sum + candidate.valid, 0);
     this.candidateList.forEach(candidate => {
       candidate.setFlagFcn(this.type + '-solve-flag',(numOptions == 1) && candidate.valid);
