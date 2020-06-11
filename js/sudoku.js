@@ -349,9 +349,6 @@ class Candidate {
   set valid(val) {
     this.validProp = val;
     this.setHiddenFcn(!this.valid);
-    if( !val){
-      console.log("setting id", this.id, "invalid" );
-    }
   }
 
   setConflict(type, val) {
@@ -403,24 +400,34 @@ class Candidate {
 
     this.orderedRegionList.forEach(
       region => {
-        let f = region.candidateList.filter( candidate => (candidate != this) && candidate.guessed );
-        let a = f.filter(candidate => candidate.id > this.id && region.candidateList.indexOf(candidate) < region.candidateList.indexOf(this));
-        //let b =
-        let z = f.filter(candidate => candidate.id < this.id && region.candidateList.indexOf(candidate) > region.candidateList.indexOf(this));
-
+        let cl = region.candidateList;
+        let f = cl.filter( candidate => (candidate != this) && candidate.guessed );
+        let a = f.filter(candidate => candidate.id > this.id && cl.indexOf(candidate) < cl.indexOf(this));
+        let z = f.filter(candidate => candidate.id < this.id && cl.indexOf(candidate) > cl.indexOf(this));
         this.valid = this.valid && ((a.length + z.length)==0);
+        // the above handles guessed candidates
+        // the below will attempt to handle unguessed candidates, ex: 9 cannot ever be in the first cell, 1 cannot be in the last
+        // If any of the cells below me cannot be N-x, I cannot be N
+        // TODO: tidy this
+        // TODO: run this on board population
+        // TODO: capture if the grid directly above it is missing an option, to properly create ladders
+        let lower = cl.filter( c => (c.parent != this.parent ) && cl.indexOf(c) < cl.indexOf(this) );
+        let greater = cl.filter( c => (c.parent != this.parent ) && cl.indexOf(c) > cl.indexOf(this)  );
+        if( lower.length > 0){
+          let l = lower.filter( c => c.valid && c.id < this.id );
+          if( l.length == 0){
+            this.valid = this.valid && false;
+          }
+        }
+        if( greater.length > 0){
+          let g = greater.filter( c => c.valid && c.id > this.id );
+          if( g.length == 0){
+            this.valid = this.valid && false;
+          }
+        }
+
       }
     );
-//    var orderedSanity = this.orderedRegionList.some(
-//                              region => region.candidateList.some(
-//                                candidate => (candidate != this) && candidate.guessed));
-//    console.log(orderedSanity);
-    // also set invalid if this is lowe
-//    for( var i = 0; i < this.orderedRegionList.length; i++){
-//      var index = this.orderedRegionList[i].candidateList.indexOf(this);
-//      console.log(index, this.id);
-//      //console.log(this.orderedRegionList[i]);
-//    }
     this.setConflict('collision',(this.guessed && !this.validProp) ||
                            (this.valid && !this.validProp) );
   }
