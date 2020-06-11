@@ -331,6 +331,7 @@ class Candidate {
     this.toggled = null;
     this.guessed = false;
     this.constraintList = [];
+    this.orderedRegionList = [];
     this.setFlagFcn = null;
     this.setHiddenFcn = null;
     this.actionQueue = null;
@@ -348,6 +349,9 @@ class Candidate {
   set valid(val) {
     this.validProp = val;
     this.setHiddenFcn(!this.valid);
+    if( !val){
+      console.log("setting id", this.id, "invalid" );
+    }
   }
 
   setConflict(type, val) {
@@ -372,19 +376,22 @@ class Candidate {
     }
     this.setHiddenFcn(!this.valid);
     this.constraintList.forEach(constraint => {constraint.updateCandidates();});
+    this.orderedRegionList.forEach(region => {region.updateCandidates();});// I dont need candidate N in other constraints in this
   }
 
   guess() {
     this.guessed = true;
     this.constraintList.forEach(constraint => {constraint.updateCandidates();});
+    this.orderedRegionList.forEach(region => {region.updateCandidates();}); // I dont need candidate N in other constraints in this
   }
 
   unguess() {
     this.guessed = false;
     this.constraintList.forEach(constraint => {constraint.updateCandidates();});
+    this.orderedRegionList.forEach(region => {region.updateCandidates();});
     this.parent.setFlagFcn('collision-conflict-flag',false);
   }
-  // a candidate will set itself to invalid if:
+  // a candidate will mark itself as a conflict( !valid ) if:
   // there is a constraint it is part of, that has a candidate guessed
   // in concrete terms: candidate '8' in cell R0C0 ( row 0 ) will toggle itself invalid if candidate '8' in R0C4 has been guessed.
   // can this be the right location to handle thermometers?  A thermometer candidate is invalid if any number higher than it has also been chosen in a predecessor
@@ -394,6 +401,26 @@ class Candidate {
       constraint => constraint.candidateList.some(
         candidate => (candidate != this) && candidate.guessed));
 
+    this.orderedRegionList.forEach(
+      region => {
+        let f = region.candidateList.filter( candidate => (candidate != this) && candidate.guessed );
+        let a = f.filter(candidate => candidate.id > this.id && region.candidateList.indexOf(candidate) < region.candidateList.indexOf(this));
+        //let b =
+        let z = f.filter(candidate => candidate.id < this.id && region.candidateList.indexOf(candidate) > region.candidateList.indexOf(this));
+
+        this.valid = this.valid && ((a.length + z.length)==0);
+      }
+    );
+//    var orderedSanity = this.orderedRegionList.some(
+//                              region => region.candidateList.some(
+//                                candidate => (candidate != this) && candidate.guessed));
+//    console.log(orderedSanity);
+    // also set invalid if this is lowe
+//    for( var i = 0; i < this.orderedRegionList.length; i++){
+//      var index = this.orderedRegionList[i].candidateList.indexOf(this);
+//      console.log(index, this.id);
+//      //console.log(this.orderedRegionList[i]);
+//    }
     this.setConflict('collision',(this.guessed && !this.validProp) ||
                            (this.valid && !this.validProp) );
   }
@@ -409,19 +436,13 @@ class OrderedRegion {
     this.type = type;
   }
 
-//  updateCandidates() {
-//    this.candidateList.forEach(candidate => {candidate.update();});
-//  }
+  updateCandidates() {
+    this.candidateList.forEach(candidate => {candidate.update();});
+  }
 
-//  check() {
-//    /* If this constraint is for digit 8, then check to see if there is only 1 valid candidate for digit 8 */
-//    /* This is currently not working as expected for Cages, as cages are not always 9 digits big. this logic expects 9 digit regions */
-//    let numOptions = this.candidateList.reduce((sum,candidate) => sum + candidate.valid, 0);
-//    this.candidateList.forEach(candidate => {
-//      candidate.setFlagFcn(this.type + '-solve-flag',(numOptions == 1) && candidate.valid);
-//    });
-//
-//  }
+  check() {
+    // constraint sets a solved flag if there is only 1, but this should modify constraint validity
+  }
 }
 /* A "Constraint" is, for example, Where can digit 8 go in this Region */
 class Constraint {
@@ -433,7 +454,9 @@ class Constraint {
   }
 
   updateCandidates() {
-    this.candidateList.forEach(candidate => {candidate.update();});
+    this.candidateList.forEach(candidate => {
+      candidate.update();
+    });
   }
 
   check() {
@@ -570,7 +593,8 @@ class LogicGrid {
          this.constraintList.push(thermoConstraints[t][j]);
         }
         Array.from(Array(optionFlags["thermometers"][t]["values"].length), () => null)
-        this.orderedRegionList.push(Array.from(Array(optionFlags["thermometers"][t]["values"].length), () => new OrderedRegion()));  // make a ordered region for each thermometer to be used later in the candidate section
+
+        this.orderedRegionList.push(new OrderedRegion());  // make a ordered region for each thermometer to be used later in the candidate section
     }
 
     // construct outer sudoku grid table
@@ -613,9 +637,10 @@ class LogicGrid {
             if( index >= 0 ){
                thermoConstraints[t][k].candidateList.push(candidate);
                candidate.constraintList.push(thermoConstraints[t][k]);
-               this.orderedRegionList[t][index].candidateList.push(candidate);
-               // I have an ordered region, and I am specifying what in it?
+               this.orderedRegionList[t].candidateList.push(candidate);
+               candidate.orderedRegionList.push(this.orderedRegionList[t]);
             }
+
           }
           if( (optionFlags["diagonalFlag"] > 0) ){
             if( i == j && (optionFlags["diagonalFlag"] & 1) ){
@@ -640,6 +665,7 @@ class LogicGrid {
     // Any given constrain only has candidates for a particular digit at the moment
 
     // I want to extend this to support thermometers, where we would check predecessor values.
+    //this.orderedRegionList.forEach(region => {region.check();});
     this.constraintList.forEach(constraint => {constraint.check();});
   }
 }
