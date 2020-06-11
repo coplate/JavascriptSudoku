@@ -6,6 +6,7 @@ class Sudoku {
 
     const diagonalFlag = urlParams.get('D') || "0";
     const killerFlagList = urlParams.getAll('K') || [];
+    const thermoFlagList = urlParams.getAll('T') || []; // a Thermometer, like a cage, need not be a 9 digit area
     //const chessFlag = urlParams.getAll('Z') || [];
 
 
@@ -19,10 +20,19 @@ class Sudoku {
         };
 
     }
-    console.log(cageList);
+    var thermoList = [];
+    for (var t = 0; t < thermoFlagList.length; t++) {
+        thermoList[t] = {
+            "values":thermoFlagList[t].match(/(..?)/g),
+            fresh: true
+        };
+    }
+
+
     let optionFlags = {
         "diagonalFlag": diagonalFlag,
-        "killerCages": cageList
+        "killerCages": cageList,
+        "thermometers": thermoList,
     };
 
     // build html structure
@@ -374,7 +384,11 @@ class Candidate {
     this.constraintList.forEach(constraint => {constraint.updateCandidates();});
     this.parent.setFlagFcn('collision-conflict-flag',false);
   }
-
+  // a candidate will set itself to invalid if:
+  // there is a constraint it is part of, that has a candidate guessed
+  // in concrete terms: candidate '8' in cell R0C0 ( row 0 ) will toggle itself invalid if candidate '8' in R0C4 has been guessed.
+  // can this be the right location to handle thermometers?  A thermometer candidate is invalid if any number higher than it has also been chosen in a predecessor
+  // or a number lower than it in a successor
   update() {
     this.valid = !this.constraintList.some(
       constraint => constraint.candidateList.some(
@@ -384,6 +398,30 @@ class Candidate {
                            (this.valid && !this.validProp) );
   }
 
+}
+
+ /* some regions must be ordered, like thermometers
+ in these regions, you must ascend or descend as appropriate
+ */
+class OrderedRegion {
+  constructor(type) {
+    this.candidateList = []; // Grid squares are part of candidates, so if we use this type we can borrow some logic
+    this.type = type;
+  }
+
+//  updateCandidates() {
+//    this.candidateList.forEach(candidate => {candidate.update();});
+//  }
+
+//  check() {
+//    /* If this constraint is for digit 8, then check to see if there is only 1 valid candidate for digit 8 */
+//    /* This is currently not working as expected for Cages, as cages are not always 9 digits big. this logic expects 9 digit regions */
+//    let numOptions = this.candidateList.reduce((sum,candidate) => sum + candidate.valid, 0);
+//    this.candidateList.forEach(candidate => {
+//      candidate.setFlagFcn(this.type + '-solve-flag',(numOptions == 1) && candidate.valid);
+//    });
+//
+//  }
 }
 /* A "Constraint" is, for example, Where can digit 8 go in this Region */
 class Constraint {
@@ -485,12 +523,14 @@ class LogicGrid {
   constructor(optionFlags) {
     this.constraintList = [];
     this.squareList = [];
+    this.orderedRegionList = []
     var boxConstraints = [];
     var rowConstraints = [];
     var colConstraints = [];
     var cellConstraints = [];
     var diagonalConstraints = [];
     var cageConstraints = [];
+    var thermoConstraints = []
 
     // create constraints
     for (var i = 0; i < 9; i++) {
@@ -523,6 +563,15 @@ class LogicGrid {
          this.constraintList.push(cageConstraints[klc][j]);
         }
     }
+    for (var t = 0; t < optionFlags["thermometers"].length; t++) {
+        thermoConstraints[t] = [];
+        for (var j = 0; j < 9; j++) {
+         thermoConstraints[t][j] = new Constraint('thermo'); // t is thermometer#, j is Candidate Value#
+         this.constraintList.push(thermoConstraints[t][j]);
+        }
+        Array.from(Array(optionFlags["thermometers"][t]["values"].length), () => null)
+        this.orderedRegionList.push(Array.from(Array(optionFlags["thermometers"][t]["values"].length), () => new OrderedRegion()));  // make a ordered region for each thermometer to be used later in the candidate section
+    }
 
     // construct outer sudoku grid table
     for (var i = 0; i < 9; i++) {
@@ -554,9 +603,18 @@ class LogicGrid {
 
           for (var klc = 0; klc < optionFlags["killerCages"].length; klc++) {
             if( optionFlags["killerCages"][klc]["values"].includes(""+i+""+j) ){
-              console.log(""+i+""+j);
                cageConstraints[klc][k].candidateList.push(candidate);
                candidate.constraintList.push(cageConstraints[klc][k]);
+            }
+          }
+          // for this to work, we can assume that "thermometers" is ordered from the bulb forward
+          for (var t = 0; t < optionFlags["thermometers"].length; t++) {
+            var index = optionFlags["thermometers"][t]["values"].indexOf(""+i+""+j);
+            if( index >= 0 ){
+               thermoConstraints[t][k].candidateList.push(candidate);
+               candidate.constraintList.push(thermoConstraints[t][k]);
+               this.orderedRegionList[t][index].candidateList.push(candidate);
+               // I have an ordered region, and I am specifying what in it?
             }
           }
           if( (optionFlags["diagonalFlag"] > 0) ){
@@ -576,6 +634,12 @@ class LogicGrid {
   }
 
   checkConstraints() {
+    // go through all of the constraints, asking them to check themselves
+    // each constraint currently checks: Is there only 1 candidate in my candidateList?
+    // If so, that candidate must be the correct candidate for the number
+    // Any given constrain only has candidates for a particular digit at the moment
+
+    // I want to extend this to support thermometers, where we would check predecessor values.
     this.constraintList.forEach(constraint => {constraint.check();});
   }
 }
@@ -632,6 +696,55 @@ class HTMLGrid {
             if(! optionFlags["killerCages"][klc]["values"].includes(""+((i+9)%9)+""+((j+9-1)%9)) ){
                 cageDiv.style.borderLeft = " dotted 3px";
             }
+
+
+
+            // cage border, remove the left, right, etc if the neighbor is part of the same cage
+          }
+        }
+
+        for (var t = 0; t < optionFlags["thermometers"].length; t++) {
+          if( optionFlags["thermometers"][t]["values"].includes(""+i+""+j) ){
+            var thermoDiv = document.createElement('div');
+
+            wrapper.appendChild(thermoDiv);
+
+            thermoDiv.classList.add('thermo');
+            if( optionFlags["thermometers"][t].fresh ){
+                var bulbDiv = document.createElement('div');
+                thermoDiv.appendChild(bulbDiv);
+                bulbDiv.classList.add("bulb");
+
+
+                optionFlags["thermometers"][t].fresh=false;
+            }
+
+            if( optionFlags["thermometers"][t]["values"].includes(""+((i+9+1)%9)+""+((j+9)%9)) ){
+                var tubeDiv = document.createElement('div');
+                thermoDiv.appendChild(tubeDiv);
+                tubeDiv.classList.add("tube");
+                tubeDiv.classList.add('tubeD');
+
+            }
+            if( optionFlags["thermometers"][t]["values"].includes(""+((i+9-1)%9)+""+((j+9)%9)) ){
+                var tubeDiv = document.createElement('div');
+                tubeDiv.classList.add("tube");
+                thermoDiv.appendChild(tubeDiv);
+                tubeDiv.classList.add("tubeU");
+            }
+            if( optionFlags["thermometers"][t]["values"].includes(""+((i+9)%9)+""+((j+9+1)%9)) ){
+                var tubeDiv = document.createElement('div');
+                tubeDiv.classList.add("tube");
+                thermoDiv.appendChild(tubeDiv);
+                tubeDiv.classList.add("tubeR");
+            }
+            if( optionFlags["thermometers"][t]["values"].includes(""+((i+9)%9)+""+((j+9-1)%9)) ){
+                var tubeDiv = document.createElement('div');
+                tubeDiv.classList.add("tube");
+                thermoDiv.appendChild(tubeDiv);
+                tubeDiv.classList.add("tubeL");
+            }
+
 
 
 
