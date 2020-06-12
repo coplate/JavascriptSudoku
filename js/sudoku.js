@@ -3,6 +3,7 @@ class Sudoku {
 
     const urlParams = new URLSearchParams(window.location.search);
     const puzzle = urlParams.get('puzzle');
+    const remote = urlParams.get('remote');
 
     const diagonalFlag = urlParams.get('D') || "0";
     const killerFlagList = urlParams.getAll('K') || [];
@@ -51,10 +52,19 @@ class Sudoku {
     this.container.appendChild(this.viewGrid.wrapper);
 
     if( !puzzle ){
+      if( remote ){
+        console.log(remote);
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = this.loadXhttpPuzzle.bind(this,xhttp);
+        xhttp.open("GET", remote, true);
+        xhttp.send();
+      }else{
         var xhttp = new XMLHttpRequest();
         xhttp.onreadystatechange = this.loadXhttpPuzzle.bind(this,xhttp);
         xhttp.open("GET", "puzzle.txt", true);
         xhttp.send();
+      }
+
     }else{
         this.loadQueryPuzzle(puzzle);
     }
@@ -102,19 +112,40 @@ class Sudoku {
     loadXhttpPuzzle(xhttp) {
       if (xhttp.readyState == 4 && xhttp.status == 200) {
         let board = JSON.parse(xhttp.responseText);
-        let k = 0;
-        for (var i = 0; i < 9; i++) {
-          for (var j = 0; j < 9; j++) {
-            if (board[i][j]) {
-              this.logicGrid.squareList[k].enterGuessFcn(board[i][j] - 1, true);
-              var clue = new Constraint('clue');
-              clue.candidateList.push(this.logicGrid.squareList[k].candidateList[board[i][j] - 1]);
-              this.logicGrid.squareList[k].candidateList[board[i][j] - 1].constraintList.push(clue);
-              this.logicGrid.constraintList.push(clue);
+
+        if( "cells" in board ){
+          let cells = board.cells;
+          console.log(cells);
+          let k = 0;
+          for (var i = 0; i < 9; i++) {
+            for (var j = 0; j < 9; j++) {
+              if (cells[i][j] && "value" in cells[i][j] ) {
+                let value = parseInt(cells[i][j].value);
+                this.logicGrid.squareList[k].enterGuessFcn(value - 1, true);
+                var clue = new Constraint('clue');
+                clue.candidateList.push(this.logicGrid.squareList[k].candidateList[value - 1]);
+                this.logicGrid.squareList[k].candidateList[value - 1].constraintList.push(clue);
+                this.logicGrid.constraintList.push(clue);
+              }
+              k++;
             }
-            k++;
+          }
+        }else{
+          let k = 0;
+          for (var i = 0; i < 9; i++) {
+            for (var j = 0; j < 9; j++) {
+              if (board[i][j]) {
+                this.logicGrid.squareList[k].enterGuessFcn(board[i][j] - 1, true);
+                var clue = new Constraint('clue');
+                clue.candidateList.push(this.logicGrid.squareList[k].candidateList[board[i][j] - 1]);
+                this.logicGrid.squareList[k].candidateList[board[i][j] - 1].constraintList.push(clue);
+                this.logicGrid.constraintList.push(clue);
+              }
+              k++;
+            }
           }
         }
+
         this.logicGrid.checkConstraints();
         this.container.appendChild(this.viewGrid.wrapper);
 
