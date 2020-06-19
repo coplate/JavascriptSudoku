@@ -36,11 +36,11 @@ tr, td {
 }
 
 td.grid-square {
-  border: 1px solid gray;
+  border: 2px solid gray;
 }
 
 td.grid-square:nth-child(3), td.grid-square:nth-child(6) {
-  border-right: 2px solid gray;
+  border-right: 4px solid gray;
 }
 
 td.grid-square {
@@ -92,7 +92,7 @@ td.grid-square .cell-wrapper.collision-conflict-flag{
 }
 
 tr.grid-row:nth-child(3), tr.grid-row:nth-child(6) {
-  border-bottom: 2px solid gray;
+  border-bottom: 4px solid gray;
 }
 /*td.candidate .candidate-wrapper.cage-solve-flag,*/
 td.candidate .candidate-wrapper.diagonal-solve-flag,

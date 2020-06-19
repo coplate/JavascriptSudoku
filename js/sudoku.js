@@ -53,7 +53,6 @@ class Sudoku {
 
     if( !puzzle ){
       if( remote ){
-        console.log(remote);
         var xhttp = new XMLHttpRequest();
         xhttp.onreadystatechange = this.loadXhttpPuzzle.bind(this,xhttp);
         xhttp.open("GET", remote, true);
@@ -114,21 +113,44 @@ class Sudoku {
         let board = JSON.parse(xhttp.responseText);
 
         if( "cells" in board ){
-          let cells = board.cells;
-          console.log(cells);
-          let k = 0;
-          for (var i = 0; i < 9; i++) {
-            for (var j = 0; j < 9; j++) {
-              if (cells[i][j] && "value" in cells[i][j] ) {
-                let value = parseInt(cells[i][j].value);
-                this.logicGrid.squareList[k].enterGuessFcn(value - 1, true);
-                var clue = new Constraint('clue');
-                clue.candidateList.push(this.logicGrid.squareList[k].candidateList[value - 1]);
-                this.logicGrid.squareList[k].candidateList[value - 1].constraintList.push(clue);
-                this.logicGrid.constraintList.push(clue);
+          if( "cells" in board ){
+
+            let cells = board.cells;
+            let k = 0;
+            for (var i = 0; i < 9; i++) {
+              for (var j = 0; j < 9; j++) {
+                if (cells[i][j] && "value" in cells[i][j] ) {
+                  let value = parseInt(cells[i][j].value);
+                  this.logicGrid.squareList[k].enterGuessFcn(value - 1, true);
+                  var clue = new Constraint('clue');
+                  clue.candidateList.push(this.logicGrid.squareList[k].candidateList[value - 1]);
+                  this.logicGrid.squareList[k].candidateList[value - 1].constraintList.push(clue);
+                  this.logicGrid.constraintList.push(clue);
+                }
+                k++;
               }
-              k++;
             }
+          }
+          if( "cages" in board ){
+
+            let cages = board.cages;
+
+            cages.forEach( cage => {
+              for (var i = 0; i < 9; i++) {
+                var cageConstraint = new Constraint('cage');// I need 9 cageConstraints for each cage.
+                // each of those cageconstrins will have all N cells in teh cage.
+                cage.cells.forEach( cell => {
+                  let c = cell[0];
+                  let r = cell[1];
+                  let k = c*9 + r;
+                  //cageConstraint[0] == where can 0 go in teh cells in the candidatelist of this constraint'
+                  cageConstraint.candidateList.push(this.logicGrid.squareList[k].candidateList[i]);
+                  this.logicGrid.squareList[k].candidateList[i].constraintList.push(cageConstraint);
+                });
+                this.logicGrid.constraintList.push(cageConstraint);
+              }
+            } );
+            this.viewGrid.drawCages(cages, this.viewGrid.gridSquareWrappers, this.container.offsetWidth);
           }
         }else{
           let k = 0;
@@ -429,6 +451,8 @@ class Candidate {
       constraint => constraint.candidateList.some(
         candidate => (candidate != this) && candidate.guessed));
 
+    // If this candidat sees an X,Y pair in any combination of regions, it cannot be X or Y
+    // also ty to do a,b,c; a,b,c,d etc
     this.orderedRegionList.forEach(
       region => {
         let cl = region.candidateList;
@@ -737,35 +761,8 @@ class HTMLGrid {
         var gridSquareWrapper = new GridSquareWrapper(wrapper,this)
         this.gridSquareWrappers.push(gridSquareWrapper);
 
-        for (var klc = 0; klc < optionFlags["killerCages"].length; klc++) {
-          if( optionFlags["killerCages"][klc]["values"].includes(""+i+""+j) ){
-            var cageDiv = document.createElement('div');
-            wrapper.appendChild(cageDiv);
-            if( optionFlags["killerCages"][klc].fresh ){
-                cageDiv.innerHTML=optionFlags["killerCages"][klc].sum;
-                optionFlags["killerCages"][klc].fresh=false;
-            }
-            cageDiv.style.fontSize = (width*0.018) + 'px';
-            cageDiv.classList.add('cage');
-            //cageDiv.style.outlineStyle = "dashed";
-            if(! optionFlags["killerCages"][klc]["values"].includes(""+((i+9+1)%9)+""+((j+9)%9)) ){
-                cageDiv.style.borderBottom = " dotted 3px";
-            }
-            if(! optionFlags["killerCages"][klc]["values"].includes(""+((i+9-1)%9)+""+((j+9)%9)) ){
-                cageDiv.style.borderTop = " dotted 3px";
-            }
-            if(! optionFlags["killerCages"][klc]["values"].includes(""+((i+9)%9)+""+((j+9+1)%9)) ){
-                cageDiv.style.borderRight = " dotted 3px";
-            }
-            if(! optionFlags["killerCages"][klc]["values"].includes(""+((i+9)%9)+""+((j+9-1)%9)) ){
-                cageDiv.style.borderLeft = " dotted 3px";
-            }
 
 
-
-            // cage border, remove the left, right, etc if the neighbor is part of the same cage
-          }
-        }
 
         for (var t = 0; t < optionFlags["thermometers"].length; t++) {
           if( optionFlags["thermometers"][t]["values"].includes(""+i+""+j) ){
@@ -873,6 +870,7 @@ class HTMLGrid {
         this.wrapper.appendChild(diagonalLine2);
 
     }
+    this.drawCages(optionFlags["killerCages"], this.gridSquareWrappers, width);
     // attach event handlers to container and focustrap
     var trapFocus = function() {this.focusTrap.focus();};
     this.wrapper.addEventListener(
@@ -882,6 +880,77 @@ class HTMLGrid {
 
 
   }
+drawCageItems(divElement, width, value, cageValues, i, j){
+  var cageDiv = document.createElement('div');
+  divElement.appendChild(cageDiv);
+  cageDiv.style.fontSize = (width*0.018) + 'px';
+  cageDiv.style.fontWeight="bold";
+  if( value != null ){
+    cageDiv.innerHTML=value;
+  }
+  cageDiv.classList.add('cage');
+  //cageDiv.style.outlineStyle = "dashed";
+  let up = [((i+9-1)%9),((j+9)%9)].join(",");
+  let down = [((i+9+1)%9),((j+9)%9)].join(",");
+  let left = [((i+9)%9),((j+9-1)%9)].join(",");
+  let right = [((i+9)%9),((j+9+1)%9)].join(",");
+  if( ! cageValues.includes(down) ){
+      cageDiv.style.borderBottom = " dotted 2px";
+  }
+  if(! cageValues.includes(up) ){
+      cageDiv.style.borderTop = " dotted 2px";
+  }
+  if(! cageValues.includes(right) ){
+      cageDiv.style.borderRight = " dotted 2px";
+  }
+  if(! cageValues.includes(left) ){
+      cageDiv.style.borderLeft = " dotted 2px";
+  }
+
+
+}
+drawCages(killerCages, gridSquareWrappers, width){
+
+  killerCages.forEach( cage => {
+    if( "sum" in cage){
+      let cageValue = cage.sum;
+      console.log(cageValue);
+      let cageCellMap = cage.values.map( (a) => a.split('').join(",") );
+      console.log(cageCellMap);
+      cage.values.forEach( value => {
+        console.log(value);
+         let i = parseInt(value.charAt(0));
+         let j = parseInt(value.charAt(1));
+
+         var wrapper = gridSquareWrappers[9*i + j].divElement;
+
+         this.drawCageItems(wrapper, width, cageValue, cageCellMap, i, j );
+         if( cageValue != null ){
+             cageValue = null;
+         }
+         // cage border, remove the left, right, etc if the neighbor is part of the same cage
+      });
+    }
+    if( "cells" in cage){
+      let cageValue = cage.value;
+      console.log(cageValue);
+      let cageCellMap = cage.cells.map( (a) => a.join(",") );;
+
+      cage.cells.forEach( cell => {
+         let i = cell[0];
+         let j = cell[1];
+         var wrapper = gridSquareWrappers[9*i + j].divElement;
+         this.drawCageItems(wrapper, width, cageValue, cageCellMap, i, j );
+         if( cageValue != null ){
+             cageValue = null;
+         }
+         // cage border, remove the left, right, etc if the neighbor is part of the same cage
+      });
+    }
+  });
+
+
+}
 setMode(mode){
   this.mode = mode;
 }
