@@ -258,11 +258,16 @@ class GridSquareWrapper {
     this.enterGuessFcn = null;
   }
 
-  activate() {
-    if (this.parent.activeGridSquare) {
-      this.parent.activeGridSquare.divElement.classList.remove('active');
+  activate(e) {
+  console.log(e);
+    if( !e.ctrlKey ){
+      if (this.parent.activeGridSquares.length > 0) {
+        this.parent.activeGridSquares.forEach( g => g.divElement.classList.remove('active') );
+        this.parent.activeGridSquares.length=0;
+      }
     }
-    this.parent.activeGridSquare = this;
+
+    this.parent.activeGridSquares.push( this );
     this.divElement.classList.add('active');
   }
 
@@ -366,8 +371,9 @@ class CandidateWrapper {
   }
 
   clickHandler() {
+    console.log(1);
     if (this.clickFunction) {
-      if (this.parent.parent.activeGridSquare == this.parent){
+      if (this.parent.parent.activeGridSquares.includes( this.parent )){
         // if parent square is the activeGridSquare
         this.clickFunction();
       }
@@ -735,7 +741,7 @@ class LogicGrid {
 class HTMLGrid {
   constructor(width, optionFlags) {
     this.mode = "normal";
-    this.activeGridSquare = null;
+    this.activeGridSquares = [];
     this.gridSquareWrappers = [];
     this.actionQueue = null;
 
@@ -956,21 +962,27 @@ setMode(mode){
 }
 keypressHandler(event) {
     if (!event.ctrlKey & !event.shiftKey & !event.altKey & !event.metaKey){
-      if (this.activeGridSquare) {
+      if (this.activeGridSquares.length > 0) {
         if (/^[1-9]$/.test(event.key)) {
           let value = parseInt(event.key);
           if( this.mode == "normal" ){
-            this.activeGridSquare.enterGuess(value);
+            this.activeGridSquares.forEach( g => g.enterGuess(value) );
           }else if( this.mode == "candidates" ){
-            let candidateWrapper = this.activeGridSquare.candidateWrappers[value-1];
-            candidateWrapper.clickFunction();
+            this.activeGridSquares.forEach( g => {
+              let candidateWrapper = g.candidateWrappers[value-1];
+              candidateWrapper.clickFunction();
+            });
+
+
           }
 
         } else if (event.key == 'Delete' || event.key == 'Backspace') {
-          this.activeGridSquare.enterGuess(0);
+          this.activeGridSquares.forEach( g => g.enterGuess(0) );
         } else if (event.key == 'ArrowLeft' || event.key == 'ArrowUp' ||  event.key == 'ArrowRight' || event.key == 'ArrowDown' ) {
-          var activeHtmlRow = this.activeGridSquare.divElement.closest("tr");
-          var activeHtmlCell = this.activeGridSquare.divElement.closest("td");
+        console.log(this.activeGridSquares);
+          let activeGridSquare = this.activeGridSquares[this.activeGridSquares.length - 1];
+          var activeHtmlRow = activeGridSquare.divElement.closest("tr");
+          var activeHtmlCell = activeGridSquare.divElement.closest("td");
           var tableBody = activeHtmlRow.closest("tbody")
           var columnIndex = Array.prototype.indexOf.call(activeHtmlRow.children, activeHtmlCell);
           var rowIndex = Array.prototype.indexOf.call(tableBody.children, activeHtmlRow);
