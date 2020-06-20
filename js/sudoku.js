@@ -10,6 +10,8 @@ class Sudoku {
     const thermoFlagList = urlParams.getAll('T') || []; // a Thermometer, like a cage, need not be a 9 digit area
     //const chessFlag = urlParams.getAll('Z') || [];
 
+    const chessFlags = urlParams.get('C') || ''; //Knight,(K) Bishop(B), Queen(Q), King(G), 1 variable like KB or G
+
 
     var cageList = [];
     for (var klc = 0; klc < killerFlagList.length; klc++) {
@@ -34,6 +36,7 @@ class Sudoku {
         "diagonalFlag": diagonalFlag,
         "killerCages": cageList,
         "thermometers": thermoList,
+        "chessFlags": chessFlags,
     };
 
     // build html structure
@@ -54,7 +57,7 @@ class Sudoku {
     if( !puzzle ){
       if( remote ){
         var xhttp = new XMLHttpRequest();
-        xhttp.onreadystatechange = this.loadXhttpPuzzle.bind(this,xhttp);
+        xhttp.onreadystatechange = this.loadRemoteXhttpPuzzle.bind(this,xhttp);
         xhttp.open("GET", remote, true);
         xhttp.send();
       }else{
@@ -106,6 +109,22 @@ class Sudoku {
       }
       this.logicGrid.checkConstraints();
       this.container.appendChild(this.viewGrid.wrapper);
+    }
+    loadRemoteXhttpPuzzle(xhttp) {
+      if (xhttp.readyState == 4 && xhttp.status == 200) {
+        let response = JSON.parse(xhttp.responseText);
+        if( "downloadTokens" in response ){
+          var rxhttp = new XMLHttpRequest();
+          rxhttp.onreadystatechange = this.loadXhttpPuzzle.bind(this,rxhttp);
+          let remotePath = xhttp.responseURL + "?alt=media&token=" + response.downloadTokens;
+          rxhttp.open("GET", remotePath, true);
+          rxhttp.send();
+        }
+        else
+        {
+          this.loadXhttpPuzzle(xhttp);
+        }
+      }
     }
 
     loadXhttpPuzzle(xhttp) {
@@ -259,7 +278,6 @@ class GridSquareWrapper {
   }
 
   activate(e) {
-  console.log(e);
     if( !e.ctrlKey ){
       if (this.parent.activeGridSquares.length > 0) {
         this.parent.activeGridSquares.forEach( g => g.divElement.classList.remove('active') );
@@ -371,7 +389,6 @@ class CandidateWrapper {
   }
 
   clickHandler() {
-    console.log(1);
     if (this.clickFunction) {
       if (this.parent.parent.activeGridSquares.includes( this.parent )){
         // if parent square is the activeGridSquare
@@ -456,6 +473,13 @@ class Candidate {
     this.valid = !this.constraintList.some(
       constraint => constraint.candidateList.some(
         candidate => (candidate != this) && candidate.guessed));
+
+
+    // chessFlags - Should it go here, or somewhere else.
+    // this update function is the root of all field, but I dont want to computer unique regioms for all possible chess moves.
+    // But if we do it in here, then each candidate will need access to all candidates, in teh full grid, not just candidates in thier constraintlist
+    // the LogicGrid is the other expected place that it could go
+
 
     // If this candidat sees an X,Y pair in any combination of regions, it cannot be X or Y
     // also ty to do a,b,c; a,b,c,d etc
@@ -623,6 +647,10 @@ class LogicGrid {
     var cageConstraints = [];
     var thermoConstraints = []
 
+
+
+
+
     // create constraints
     for (var i = 0; i < 9; i++) {
       boxConstraints[i] = [];
@@ -688,10 +716,13 @@ class LogicGrid {
           // For each region, if the Cell R0C0 is in the region, then  "the number N in Cell RxCy" is a possible solution to this region.
           // and then that candidates constraintList contains all of the regions that cell is a member of.
 
+
+
           candidate.constraintList = [ boxConstraints[boxNum][k],
                                        rowConstraints[i][k],
                                        colConstraints[j][k],
-                                       cellConstraints[i][j] ];
+                                       cellConstraints[i][j],
+                                        ];
 
           for (var klc = 0; klc < optionFlags["killerCages"].length; klc++) {
             if( optionFlags["killerCages"][klc]["values"].includes(""+i+""+j) ){
@@ -724,6 +755,58 @@ class LogicGrid {
         }
       }
     }
+
+    this.squareList.forEach( (square, index) => {
+      //use s.candidateList;
+      // each gridSquare has a Candidate List
+      //  each candidate has a constraintList
+      //  each Constraing has a candidateList and so fort
+      // so foreach grid square
+      //  calculate all of the King constraint locations
+      // foreach Candidate
+      //  add the king constrainst o candidate constraint list
+      //  add the canidates to the constraint
+
+      let row = Math.floor( index / 9 );
+      let column = index % 9;
+      // square = 9* row + column
+      //var chessConstraints = []; // I didn't want to compute all these, but I cannot think of an elegant options what works witht eh constraint strategy
+      if( optionFlags["chessFlags"].length > 0){
+        if( optionFlags["chessFlags"].includes("G") ){
+
+          square.candidateList.forEach( candidate => {
+            let kingConstraint = new Constraint('king');
+            [-1,0,1].forEach( cc => {
+              [-1,0,1].forEach( cr => {
+                 let nr =row + cr;
+                 let nc = column + cc;
+
+                 if( nr >= 0 &&  nc >= 0 &&  nr < 9 &&  nc < 9){
+                  let newSquareNumber = parseInt(9* nr + nc);
+                    let kingSquare = this.squareList[ newSquareNumber];
+                    let kingCandidate = kingSquare.candidateList[candidate.id];
+                    kingConstraint.candidateList.push(kingCandidate);
+                  }
+                  //chessConstraints.push(kingConstraint);
+
+  //
+  //              kingConstraint.candidateList.push(candidate);
+  //              chessConstraints.push(kingConstraint);
+              });
+            });
+            candidate.constraintList.push(kingConstraint);
+            this.constraintList.push(kingConstraint);
+          });
+          // generate 8 boxes around it
+        }
+        // King
+        // Queen
+        // Knight
+        // Bishop
+
+        }
+    });
+
   }
 
   checkConstraints() {
@@ -920,11 +1003,8 @@ drawCages(killerCages, gridSquareWrappers, width){
   killerCages.forEach( cage => {
     if( "sum" in cage){
       let cageValue = cage.sum;
-      console.log(cageValue);
       let cageCellMap = cage.values.map( (a) => a.split('').join(",") );
-      console.log(cageCellMap);
       cage.values.forEach( value => {
-        console.log(value);
          let i = parseInt(value.charAt(0));
          let j = parseInt(value.charAt(1));
 
@@ -939,7 +1019,6 @@ drawCages(killerCages, gridSquareWrappers, width){
     }
     if( "cells" in cage){
       let cageValue = cage.value;
-      console.log(cageValue);
       let cageCellMap = cage.cells.map( (a) => a.join(",") );;
 
       cage.cells.forEach( cell => {
@@ -979,7 +1058,6 @@ keypressHandler(event) {
         } else if (event.key == 'Delete' || event.key == 'Backspace') {
           this.activeGridSquares.forEach( g => g.enterGuess(0) );
         } else if (event.key == 'ArrowLeft' || event.key == 'ArrowUp' ||  event.key == 'ArrowRight' || event.key == 'ArrowDown' ) {
-        console.log(this.activeGridSquares);
           let activeGridSquare = this.activeGridSquares[this.activeGridSquares.length - 1];
           var activeHtmlRow = activeGridSquare.divElement.closest("tr");
           var activeHtmlCell = activeGridSquare.divElement.closest("td");
