@@ -107,7 +107,6 @@ class Sudoku {
     this.viewGrid.setMode(mode);
   }
   draw(button, mode) {
-    console.log(this.viewGrid.activeGridSquares);
     let indexMap = this.viewGrid.activeGridSquares.map( (a) => this.viewGrid.gridSquareWrappers.indexOf(a) );
     if( mode == "cage"){
 
@@ -226,7 +225,6 @@ class Sudoku {
       }
     }
     importCages(cages, sudoku){
-     console.log(sudoku);
 
       if(! sudoku){
         sudoku = this;
@@ -573,8 +571,8 @@ class Candidate {
       region => {
         let cl = region.candidateList;
         let g = cl.filter( candidate => (candidate != this) && candidate.guessed );
-        let a = g.filter(candidate => candidate.id > this.id && cl.indexOf(candidate) < cl.indexOf(this));
-        let z = g.filter(candidate => candidate.id < this.id && cl.indexOf(candidate) > cl.indexOf(this));
+        let a = g.filter(candidate => candidate.id >= this.id && cl.indexOf(candidate) < cl.indexOf(this));
+        let z = g.filter(candidate => candidate.id <= this.id && cl.indexOf(candidate) > cl.indexOf(this));
         this.valid = this.valid && ((a.length + z.length)==0);
         // the above handles guessed candidates
         // the below will attempt to handle unguessed candidates, ex: 9 cannot ever be in the first cell, 1 cannot be in the last
@@ -1098,8 +1096,7 @@ drawCages(killerCages, gridSquareWrappers, width){
       cage.cells.forEach( cell => {
          let i = cell[0];
          let j = cell[1];
-         console.log(cell);
-         var wrapper = gridSquareWrappers[9*i + j].divElement;
+          var wrapper = gridSquareWrappers[9*i + j].divElement;
          this.drawCageItems(wrapper, width, cageValue, cageCellMap, i, j );
          if( cageValue != null ){
              cageValue = null;
@@ -1130,35 +1127,48 @@ drawThermoItems(divElement, width, value, cageValues, i, j, first){
   }
 
   //cageDiv.style.outlineStyle = "dashed";
-  let up = [((i+9-1)%9),((j+9)%9)].join(",");
-  let down = [((i+9+1)%9),((j+9)%9)].join(",");
-  let left = [((i+9)%9),((j+9-1)%9)].join(",");
-  let right = [((i+9)%9),((j+9+1)%9)].join(",");
+  let up = (i+9-1)%9;
+  let down = (i+9+1)%9;
+  let center = [i,j];
+  let left = (j+9-1)%9;
+  let right = (j+9+1)%9;
+  let directions = [];
 
-  if( cageValues.includes(down) && i < 8 ){
+
+
+  if( cageValues.includes([down, j].join(",")) && i < 8 ){
+    directions.push("D");
+  }
+  if( cageValues.includes([up, j].join(",")) && i > 0){
+  directions.push("U");
+  }
+  if( cageValues.includes([i, right].join(",")) && j < 8 ){
+  directions.push("R");
+  }
+  if( cageValues.includes([i, left].join(",")) && j > 0){
+  directions.push("L");
+  }
+  if( cageValues.includes([down, left].join(",")) && i < 8 ){
+  directions.push("DL");
+    }
+    if( cageValues.includes([up, left].join(",")) && i > 0){
+    directions.push("UL");
+    }
+    if( cageValues.includes([down, right].join(",")) && j < 8 ){
+    directions.push("DR");
+    }
+    if( cageValues.includes([up, right].join(",")) && j > 0){
+    directions.push("UR");
+    }
+
+    directions.forEach( direction => {
       var tubeDiv = document.createElement('div');
       thermoDiv.appendChild(tubeDiv);
       tubeDiv.classList.add("tube");
-      tubeDiv.classList.add('tubeD');
-  }
-  if( cageValues.includes(up) && i > 0){
-      var tubeDiv = document.createElement('div');
-      tubeDiv.classList.add("tube");
-      thermoDiv.appendChild(tubeDiv);
-      tubeDiv.classList.add("tubeU");
-  }
-  if( cageValues.includes(right) && j < 8 ){
-      var tubeDiv = document.createElement('div');
-      tubeDiv.classList.add("tube");
-      thermoDiv.appendChild(tubeDiv);
-      tubeDiv.classList.add("tubeR");
-  }
-  if( cageValues.includes(left) && j > 0){
-      var tubeDiv = document.createElement('div');
-      tubeDiv.classList.add("tube");
-      thermoDiv.appendChild(tubeDiv);
-      tubeDiv.classList.add("tubeL");
-  }
+      tubeDiv.classList.add('tube'+direction);
+    });
+
+
 
 
 }

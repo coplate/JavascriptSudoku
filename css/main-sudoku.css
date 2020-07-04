@@ -199,6 +199,19 @@ position: absolute;
 .tubeD {
       left: 13.5px; top: 54px; transform: rotate(90deg);
 }
+.tubeDR {
+    left: 40.5px; top: 54px;  transform: rotate(45deg) scaleX(1.2);
+}
+.tubeDL {
+      left: -13.5px; top: 54px;  transform: rotate(-45deg) scaleX(1.2);
+}
+.tubeUR {
+    left: 27px; top: 13.5px;  transform: rotate(-45deg)  scaleX(1.2);
+
+}
+.tubeUL {
+   left: -13.5px; top: 0px;  transform: rotate(45deg) scaleX(1.2);
+}
 .diagonal1 {
 position: absolute;
     left: -105px; top: 424px; width: 1060px; height: 2px; transform: rotate(45deg); background-color: lightblue; border-radius: 2px;
