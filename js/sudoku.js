@@ -99,6 +99,7 @@ class Sudoku {
     if( thermoList ){
       this.importThermometers(thermoList);
     }
+    this.logicGrid.checkConstraints();
 
   }
   setMode(button, mode) {
@@ -122,6 +123,7 @@ class Sudoku {
         "value": parseInt(document.getElementById('cageValue').value)
       }]);
     }
+    this.logicGrid.checkConstraints();
 
     //clearClass("selected-mode");
     //button.classList.add("selected-mode");
@@ -580,21 +582,27 @@ class Candidate {
         // TODO: tidy this
         // TODO: run this on board population
         // TODO: capture if the grid directly above it is missing an option, to properly create ladders
-        let lower = cl.filter( c => (c.parent != this.parent ) && cl.indexOf(c) < cl.indexOf(this) );
-        let greater = cl.filter( c => (c.parent != this.parent ) && cl.indexOf(c) > cl.indexOf(this)  );
-//        if( lower.length > 0){
-//          let l = lower.filter( c => c.valid && c.id < this.id );
-//          if( l.length == 0){
-//            this.valid = this.valid && false;
-//          }
-//        }
-//        if( greater.length > 0){
-//          let g = greater.filter( c => c.valid && c.id > this.id );
-//          if( g.length == 0){
-//            this.valid = this.valid && false;
-//          }
-//        }
 
+        // find the cell preceeding me in the ordered region?
+        let squareIndex = Math.floor(cl.indexOf(this) /9);
+        let predecessorIndex = squareIndex -1;
+        let nextIndex = squareIndex +1;
+        let previous = cl.filter( (candidate, pidx) => ( Math.floor(pidx/9) == predecessorIndex && candidate.valid ) );
+        // my minimum value is 1 + the lowest value in my predecessot
+        if( previous.length>0 ){
+          let plow = previous[0].id; // minimum of predecessor
+          if( this.id < (1+plow) ){
+            this.valid = this.valid && false;
+          }
+        }
+        let next = cl.filter( (candidate, pidx) => ( Math.floor(pidx/9) == nextIndex && candidate.valid ) );
+        // my max value is -1 + the lowest value in my follow
+        if( next.length>0 ){
+          let nhigh = next[next.length-1].id; // max of next
+          if( this.id > (nhigh-1) ){
+            this.valid = this.valid && false;
+          }
+        }
       }
     );
     this.setConflict('collision',(this.guessed && !this.validProp) ||
@@ -890,7 +898,8 @@ class LogicGrid {
 
     // I want to extend this to support thermometers, where we would check predecessor values.
     //this.orderedRegionList.forEach(region => {region.check();});
-    this.constraintList.forEach(constraint => {constraint.check();});
+    this.constraintList.forEach(constraint => {constraint.check(); constraint.updateCandidates();});
+
   }
 }
 

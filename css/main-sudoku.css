@@ -200,17 +200,17 @@ position: absolute;
       left: 13.5px; top: 54px; transform: rotate(90deg);
 }
 .tubeDR {
-    left: 40.5px; top: 54px;  transform: rotate(45deg) scaleX(1.2);
+    left: 40.5px; top: 54px;  transform: rotate(45deg) scaleX(1.45);
 }
 .tubeDL {
-      left: -13.5px; top: 54px;  transform: rotate(-45deg) scaleX(1.2);
+      left: -13.5px; top: 54px;  transform: rotate(-45deg) scaleX(1.45);
 }
 .tubeUR {
-    left: 27px; top: 13.5px;  transform: rotate(-45deg)  scaleX(1.2);
+    left: 27px; top: 13.5px;  transform: rotate(-45deg)  scaleX(1.45);
 
 }
 .tubeUL {
-   left: -13.5px; top: 0px;  transform: rotate(45deg) scaleX(1.2);
+   left: -13.5px; top: 0px;  transform: rotate(45deg) scaleX(1.45);
 }
 .diagonal1 {
 position: absolute;
