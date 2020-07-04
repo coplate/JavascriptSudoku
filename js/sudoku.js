@@ -1,3 +1,11 @@
+var dh = "7c330e4a9c9fa021d47429cb7507cc01045c189f";
+async function digestMessage(message) {
+  const msgUint8 = new TextEncoder().encode(message);                           // encode as (utf-8) Uint8Array
+  const hashBuffer = await crypto.subtle.digest('SHA-1', msgUint8);           // hash the message
+  const hashArray = Array.from(new Uint8Array(hashBuffer));                     // convert buffer to byte array
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join(''); // convert bytes to hex string
+  return hashHex;
+}
 class Sudoku {
   constructor(divContainerId) {
 
@@ -56,10 +64,19 @@ class Sudoku {
 
     if( !puzzle ){
       if( remote ){
-        var xhttp = new XMLHttpRequest();
-        xhttp.onreadystatechange = this.loadRemoteXhttpPuzzle.bind(this,xhttp);
-        xhttp.open("GET", remote, true);
-        xhttp.send();
+        var pathArray = remote.split('/');
+        var feature = pathArray.pop();
+        var hd = pathArray.join("/");
+        digestMessage(hd).then((digestHex) => {
+          if( digestHex == dh){
+            var xhttp = new XMLHttpRequest();
+            xhttp.onreadystatechange = this.loadRemoteXhttpPuzzle.bind(this,xhttp);
+            xhttp.open("GET", remote, true);
+            xhttp.send();
+          }
+        });
+
+
       }else{
         var xhttp = new XMLHttpRequest();
         xhttp.onreadystatechange = this.loadXhttpPuzzle.bind(this,xhttp);
@@ -797,6 +814,31 @@ class LogicGrid {
             candidate.constraintList.push(kingConstraint);
             this.constraintList.push(kingConstraint);
           });
+          // generate 8 boxes around it
+        }
+        if( optionFlags["chessFlags"].includes("K") ){
+          //console.log(square);
+          square.candidateList.forEach( candidate => {
+            let knightConstraint = new Constraint('knight');
+            [[-2,1],[-2,-1],[2,1],[2,-1],[1,2],[-1,2],[1,-2],[-1,-2],[0,0]].forEach(combo => {
+              let y = combo[0];
+              let x = combo[1];
+
+              let nr =row + y;
+              let nc = column + x;
+
+              if( nr >= 0 &&  nc >= 0 &&  nr < 9 &&  nc < 9){
+                //console.log(square, nr,nc);
+                let newSquareNumber = parseInt(9* nr + nc);
+                let knightSquare = this.squareList[ newSquareNumber];
+                let knightCandidate = knightSquare.candidateList[candidate.id];
+                knightConstraint.candidateList.push(knightCandidate);
+              }
+            });
+            candidate.constraintList.push(knightConstraint);
+            this.constraintList.push(knightConstraint);
+          });
+
           // generate 8 boxes around it
         }
         // King
