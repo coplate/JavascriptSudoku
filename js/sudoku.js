@@ -21,29 +21,32 @@ class Sudoku {
     const chessFlags = urlParams.get('C') || ''; //Knight,(K) Bishop(B), Queen(Q), King(G), 1 variable like KB or G
 
 
-    var cageList = [];
-    for (var klc = 0; klc < killerFlagList.length; klc++) {
-        const arrayOfStrings = killerFlagList[klc].split(".");
-        cageList[klc] = {
-            "sum":arrayOfStrings[0],
-            "values":arrayOfStrings[1].match(/(..?)/g),
-            fresh: true
-        };
 
-    }
-    var thermoList = [];
-    for (var t = 0; t < thermoFlagList.length; t++) {
-        thermoList[t] = {
-            "values":thermoFlagList[t].match(/(..?)/g),
-            fresh: true
-        };
-    }
+
+    var cageList = killerFlagList.map(
+      ( cage )=>{
+       const arrayOfStrings = cage.split(".");
+       cage = {
+           "value":arrayOfStrings[0],
+           "cells": arrayOfStrings[1].match(/(..?)/g).map( (m) => m.match(/(.)/g).map((e) => parseInt(e) ) ),
+           fresh: true
+       }
+       return cage;
+       }
+      );
+    var thermoList = thermoFlagList.map(
+      ( cage )=>{
+       cage = {
+           "cells": cage.match(/(..?)/g).map( (m) => m.match(/(.)/g).map((e) => parseInt(e) ) ),
+           fresh: true
+       }
+       return cage;
+       }
+      );
 
 
     let optionFlags = {
         "diagonalFlag": diagonalFlag,
-        "killerCages": cageList,
-        "thermometers": thermoList,
         "chessFlags": chessFlags,
     };
 
@@ -61,6 +64,8 @@ class Sudoku {
 
     this.logicGrid.checkConstraints();
     this.container.appendChild(this.viewGrid.wrapper);
+
+
 
     if( !puzzle ){
       if( remote ){
@@ -88,12 +93,40 @@ class Sudoku {
         this.loadQueryPuzzle(puzzle);
     }
 
+    if( cageList ){
+      this.importCages(cageList);
+    }
+    if( thermoList ){
+      this.importThermometers(thermoList);
+    }
 
   }
   setMode(button, mode) {
     clearClass("selected-mode");
     button.classList.add("selected-mode");
     this.viewGrid.setMode(mode);
+  }
+  draw(button, mode) {
+    console.log(this.viewGrid.activeGridSquares);
+    let indexMap = this.viewGrid.activeGridSquares.map( (a) => this.viewGrid.gridSquareWrappers.indexOf(a) );
+    if( mode == "cage"){
+
+      this.importCages([{
+        "cells": indexMap.map((idx) => [Math.floor(idx/9), idx%9]),
+        "value": parseInt(document.getElementById('cageValue').value)
+      }]);
+		}
+		if( mode == "thermometer"){
+
+      this.importThermometers([{
+        "cells": indexMap.map((idx) => [Math.floor(idx/9), idx%9]),
+        "value": parseInt(document.getElementById('cageValue').value)
+      }]);
+    }
+
+    //clearClass("selected-mode");
+    //button.classList.add("selected-mode");
+    //this.viewGrid.setMode(mode);
   }
 
   solvePuzzle() {
@@ -168,25 +201,8 @@ class Sudoku {
             }
           }
           if( "cages" in board ){
+            this.importCages(board.cages);
 
-            let cages = board.cages;
-
-            cages.forEach( cage => {
-              for (var i = 0; i < 9; i++) {
-                var cageConstraint = new Constraint('cage');// I need 9 cageConstraints for each cage.
-                // each of those cageconstrins will have all N cells in teh cage.
-                cage.cells.forEach( cell => {
-                  let c = cell[0];
-                  let r = cell[1];
-                  let k = c*9 + r;
-                  //cageConstraint[0] == where can 0 go in teh cells in the candidatelist of this constraint'
-                  cageConstraint.candidateList.push(this.logicGrid.squareList[k].candidateList[i]);
-                  this.logicGrid.squareList[k].candidateList[i].constraintList.push(cageConstraint);
-                });
-                this.logicGrid.constraintList.push(cageConstraint);
-              }
-            } );
-            this.viewGrid.drawCages(cages, this.viewGrid.gridSquareWrappers, this.container.offsetWidth);
           }
         }else{
           let k = 0;
@@ -209,6 +225,59 @@ class Sudoku {
 
       }
     }
+    importCages(cages, sudoku){
+     console.log(sudoku);
+
+      if(! sudoku){
+        sudoku = this;
+      }
+      cages.forEach( cage => {
+        for (var i = 0; i < 9; i++) {
+          var cageConstraint = new Constraint('cage');// I need 9 cageConstraints for each cage.
+          // each of those cageconstrins will have all N cells in teh cage.
+          cage.cells.forEach( cell => {
+            let c = cell[0];
+            let r = cell[1];
+            let k = c*9 + r;
+            //cageConstraint[0] == where can 0 go in teh cells in the candidatelist of this constraint'
+            cageConstraint.candidateList.push(sudoku.logicGrid.squareList[k].candidateList[i]);
+            sudoku.logicGrid.squareList[k].candidateList[i].constraintList.push(cageConstraint);
+          });
+          sudoku.logicGrid.constraintList.push(cageConstraint);
+        }
+      } );
+      sudoku.viewGrid.drawCages(cages, sudoku.viewGrid.gridSquareWrappers, sudoku.container.offsetWidth);
+     }
+
+     importThermometers(thermometers){
+        // logic
+        thermometers.forEach((thermometer) => {
+          var thermoRegion = new OrderedRegion();
+          // Ordered regions need to chack the X and Y space, and the way I do it now is having all candidates in cell A come first, then B, then C and so on.
+          thermometer.cells.forEach( cell => {
+          for (var i = 0; i < 9; i++) {
+
+            var thermoConstraint = new Constraint('thermo'); // t is thermometer#, j is Candidate Value#
+
+
+               let c = cell[0];
+               let r = cell[1];
+               let k = c*9 + r;
+               //cageConstraint[0] == where can 0 go in teh cells in the candidatelist of this constraint'
+               thermoConstraint.candidateList.push(this.logicGrid.squareList[k].candidateList[i]);
+               this.logicGrid.squareList[k].candidateList[i].constraintList.push(thermoConstraint);
+
+               thermoRegion.candidateList.push(this.logicGrid.squareList[k].candidateList[i]);
+               this.logicGrid.squareList[k].candidateList[i].orderedRegionList.push(thermoRegion);
+
+            this.logicGrid.constraintList.push(thermoConstraint);
+          }
+          });
+          this.logicGrid.orderedRegionList.push(thermoRegion);
+        });
+
+        this.viewGrid.drawThermometers(thermometers, this.viewGrid.gridSquareWrappers, this.container.offsetWidth);
+      }
 
 }
 
@@ -503,9 +572,9 @@ class Candidate {
     this.orderedRegionList.forEach(
       region => {
         let cl = region.candidateList;
-        let f = cl.filter( candidate => (candidate != this) && candidate.guessed );
-        let a = f.filter(candidate => candidate.id > this.id && cl.indexOf(candidate) < cl.indexOf(this));
-        let z = f.filter(candidate => candidate.id < this.id && cl.indexOf(candidate) > cl.indexOf(this));
+        let g = cl.filter( candidate => (candidate != this) && candidate.guessed );
+        let a = g.filter(candidate => candidate.id > this.id && cl.indexOf(candidate) < cl.indexOf(this));
+        let z = g.filter(candidate => candidate.id < this.id && cl.indexOf(candidate) > cl.indexOf(this));
         this.valid = this.valid && ((a.length + z.length)==0);
         // the above handles guessed candidates
         // the below will attempt to handle unguessed candidates, ex: 9 cannot ever be in the first cell, 1 cannot be in the last
@@ -515,18 +584,18 @@ class Candidate {
         // TODO: capture if the grid directly above it is missing an option, to properly create ladders
         let lower = cl.filter( c => (c.parent != this.parent ) && cl.indexOf(c) < cl.indexOf(this) );
         let greater = cl.filter( c => (c.parent != this.parent ) && cl.indexOf(c) > cl.indexOf(this)  );
-        if( lower.length > 0){
-          let l = lower.filter( c => c.valid && c.id < this.id );
-          if( l.length == 0){
-            this.valid = this.valid && false;
-          }
-        }
-        if( greater.length > 0){
-          let g = greater.filter( c => c.valid && c.id > this.id );
-          if( g.length == 0){
-            this.valid = this.valid && false;
-          }
-        }
+//        if( lower.length > 0){
+//          let l = lower.filter( c => c.valid && c.id < this.id );
+//          if( l.length == 0){
+//            this.valid = this.valid && false;
+//          }
+//        }
+//        if( greater.length > 0){
+//          let g = greater.filter( c => c.valid && c.id > this.id );
+//          if( g.length == 0){
+//            this.valid = this.valid && false;
+//          }
+//        }
 
       }
     );
@@ -661,8 +730,6 @@ class LogicGrid {
     var colConstraints = [];
     var cellConstraints = [];
     var diagonalConstraints = [];
-    var cageConstraints = [];
-    var thermoConstraints = []
 
 
 
@@ -691,23 +758,6 @@ class LogicGrid {
         this.constraintList.push(colConstraints[i][j]);
         this.constraintList.push(cellConstraints[i][j]);
       }
-    }
-    for (var klc = 0; klc < optionFlags["killerCages"].length; klc++) {
-        cageConstraints[klc] = [];
-        for (var j = 0; j < 9; j++) {
-         cageConstraints[klc][j] = new Constraint('cage'); // i is cage#, j is Candidate Value#
-         this.constraintList.push(cageConstraints[klc][j]);
-        }
-    }
-    for (var t = 0; t < optionFlags["thermometers"].length; t++) {
-        thermoConstraints[t] = [];
-        for (var j = 0; j < 9; j++) {
-         thermoConstraints[t][j] = new Constraint('thermo'); // t is thermometer#, j is Candidate Value#
-         this.constraintList.push(thermoConstraints[t][j]);
-        }
-        Array.from(Array(optionFlags["thermometers"][t]["values"].length), () => null)
-
-        this.orderedRegionList.push(new OrderedRegion());  // make a ordered region for each thermometer to be used later in the candidate section
     }
 
     // construct outer sudoku grid table
@@ -741,23 +791,6 @@ class LogicGrid {
                                        cellConstraints[i][j],
                                         ];
 
-          for (var klc = 0; klc < optionFlags["killerCages"].length; klc++) {
-            if( optionFlags["killerCages"][klc]["values"].includes(""+i+""+j) ){
-               cageConstraints[klc][k].candidateList.push(candidate);
-               candidate.constraintList.push(cageConstraints[klc][k]);
-            }
-          }
-          // for this to work, we can assume that "thermometers" is ordered from the bulb forward
-          for (var t = 0; t < optionFlags["thermometers"].length; t++) {
-            var index = optionFlags["thermometers"][t]["values"].indexOf(""+i+""+j);
-            if( index >= 0 ){
-               thermoConstraints[t][k].candidateList.push(candidate);
-               candidate.constraintList.push(thermoConstraints[t][k]);
-               this.orderedRegionList[t].candidateList.push(candidate);
-               candidate.orderedRegionList.push(this.orderedRegionList[t]);
-            }
-
-          }
           if( (optionFlags["diagonalFlag"] > 0) ){
             if( i == j && (optionFlags["diagonalFlag"] & 1) ){
               diagonalConstraints[0][k].candidateList.push(candidate);
@@ -893,58 +926,6 @@ class HTMLGrid {
         this.gridSquareWrappers.push(gridSquareWrapper);
 
 
-
-
-        for (var t = 0; t < optionFlags["thermometers"].length; t++) {
-          if( optionFlags["thermometers"][t]["values"].includes(""+i+""+j) ){
-            var thermoDiv = document.createElement('div');
-
-            wrapper.appendChild(thermoDiv);
-
-            thermoDiv.classList.add('thermo');
-            if( optionFlags["thermometers"][t].fresh ){
-                var bulbDiv = document.createElement('div');
-                thermoDiv.appendChild(bulbDiv);
-                bulbDiv.classList.add("bulb");
-
-
-                optionFlags["thermometers"][t].fresh=false;
-            }
-
-            if( optionFlags["thermometers"][t]["values"].includes(""+((i+9+1)%9)+""+((j+9)%9)) ){
-                var tubeDiv = document.createElement('div');
-                thermoDiv.appendChild(tubeDiv);
-                tubeDiv.classList.add("tube");
-                tubeDiv.classList.add('tubeD');
-
-            }
-            if( optionFlags["thermometers"][t]["values"].includes(""+((i+9-1)%9)+""+((j+9)%9)) ){
-                var tubeDiv = document.createElement('div');
-                tubeDiv.classList.add("tube");
-                thermoDiv.appendChild(tubeDiv);
-                tubeDiv.classList.add("tubeU");
-            }
-            if( optionFlags["thermometers"][t]["values"].includes(""+((i+9)%9)+""+((j+9+1)%9)) ){
-                var tubeDiv = document.createElement('div');
-                tubeDiv.classList.add("tube");
-                thermoDiv.appendChild(tubeDiv);
-                tubeDiv.classList.add("tubeR");
-            }
-            if( optionFlags["thermometers"][t]["values"].includes(""+((i+9)%9)+""+((j+9-1)%9)) ){
-                var tubeDiv = document.createElement('div');
-                tubeDiv.classList.add("tube");
-                thermoDiv.appendChild(tubeDiv);
-                tubeDiv.classList.add("tubeL");
-            }
-
-
-
-
-            // cage border, remove the left, right, etc if the neighbor is part of the same cage
-          }
-        }
-
-
         var guessDiv = document.createElement('div');
         wrapper.appendChild(guessDiv);
         var candidateTable = document.createElement('table');
@@ -1001,7 +982,7 @@ class HTMLGrid {
         this.wrapper.appendChild(diagonalLine2);
 
     }
-    this.drawCages(optionFlags["killerCages"], this.gridSquareWrappers, width);
+
     // attach event handlers to container and focustrap
     var trapFocus = function() {this.focusTrap.focus();};
     this.wrapper.addEventListener(
@@ -1011,6 +992,57 @@ class HTMLGrid {
 
 
   }
+
+createCageItems(divElement, width, value, cageValues, i, j){
+  var cageDiv = document.createElement('div');
+  divElement.appendChild(cageDiv);
+  cageDiv.style.fontSize = (width*0.018) + 'px';
+  cageDiv.style.fontWeight="bold";
+  if( value != null ){
+    cageDiv.innerHTML=value;
+  }
+  cageDiv.classList.add('cage');
+  //cageDiv.style.outlineStyle = "dashed";
+  let up = [((i+9-1)%9),((j+9)%9)].join(",");
+  let down = [((i+9+1)%9),((j+9)%9)].join(",");
+  let left = [((i+9)%9),((j+9-1)%9)].join(",");
+  let right = [((i+9)%9),((j+9+1)%9)].join(",");
+  if( ! cageValues.includes(down) ){
+      cageDiv.style.borderBottom = " dotted 2px";
+  }
+  if(! cageValues.includes(up) ){
+      cageDiv.style.borderTop = " dotted 2px";
+  }
+  if(! cageValues.includes(right) ){
+      cageDiv.style.borderRight = " dotted 2px";
+  }
+  if(! cageValues.includes(left) ){
+      cageDiv.style.borderLeft = " dotted 2px";
+  }
+
+
+}
+createCage(activeGridSquares, gridSquareWrappers, width, cageValue){
+  //cage = activeGridSquares.something
+
+  let cageIndexMap = activeGridSquares.map( (a) => gridSquareWrappers.indexOf(a)  );
+  let cageCellMap = cageIndexMap.map( (idx) => [Math.floor( idx / 9 ), idx % 9].join(",") );;
+  cageIndexMap.forEach( idx => {
+     let row = Math.floor( idx / 9 );
+     let column = idx % 9;
+     var wrapper = gridSquareWrappers[idx].divElement;
+     this.createCageItems(wrapper, width, cageValue, cageCellMap, row, column );
+     if( cageValue != null ){
+         cageValue = null;
+     }
+     // cage border, remove the left, right, etc if the neighbor is part of the same cage
+  });
+
+
+
+}
+
+
 drawCageItems(divElement, width, value, cageValues, i, j){
   var cageDiv = document.createElement('div');
   divElement.appendChild(cageDiv);
@@ -1066,6 +1098,7 @@ drawCages(killerCages, gridSquareWrappers, width){
       cage.cells.forEach( cell => {
          let i = cell[0];
          let j = cell[1];
+         console.log(cell);
          var wrapper = gridSquareWrappers[9*i + j].divElement;
          this.drawCageItems(wrapper, width, cageValue, cageCellMap, i, j );
          if( cageValue != null ){
@@ -1074,6 +1107,74 @@ drawCages(killerCages, gridSquareWrappers, width){
          // cage border, remove the left, right, etc if the neighbor is part of the same cage
       });
     }
+  });
+
+
+}
+
+
+drawThermoItems(divElement, width, value, cageValues, i, j, first){
+  var thermoDiv = document.createElement('div');
+  divElement.appendChild(thermoDiv);
+  thermoDiv.style.fontSize = (width*0.018) + 'px';
+  thermoDiv.style.fontWeight="bold";
+  if( value != null ){
+    thermoDiv.innerHTML=value;
+  }
+  thermoDiv.classList.add('thermo');
+
+  if( first ){
+      var bulbDiv = document.createElement('div');
+      thermoDiv.appendChild(bulbDiv);
+      bulbDiv.classList.add("bulb");
+  }
+
+  //cageDiv.style.outlineStyle = "dashed";
+  let up = [((i+9-1)%9),((j+9)%9)].join(",");
+  let down = [((i+9+1)%9),((j+9)%9)].join(",");
+  let left = [((i+9)%9),((j+9-1)%9)].join(",");
+  let right = [((i+9)%9),((j+9+1)%9)].join(",");
+
+  if( cageValues.includes(down) && i < 8 ){
+      var tubeDiv = document.createElement('div');
+      thermoDiv.appendChild(tubeDiv);
+      tubeDiv.classList.add("tube");
+      tubeDiv.classList.add('tubeD');
+  }
+  if( cageValues.includes(up) && i > 0){
+      var tubeDiv = document.createElement('div');
+      tubeDiv.classList.add("tube");
+      thermoDiv.appendChild(tubeDiv);
+      tubeDiv.classList.add("tubeU");
+  }
+  if( cageValues.includes(right) && j < 8 ){
+      var tubeDiv = document.createElement('div');
+      tubeDiv.classList.add("tube");
+      thermoDiv.appendChild(tubeDiv);
+      tubeDiv.classList.add("tubeR");
+  }
+  if( cageValues.includes(left) && j > 0){
+      var tubeDiv = document.createElement('div');
+      tubeDiv.classList.add("tube");
+      thermoDiv.appendChild(tubeDiv);
+      tubeDiv.classList.add("tubeL");
+  }
+
+
+}
+drawThermometers(thermometers, gridSquareWrappers, width){
+
+  thermometers.forEach( cage => {
+    let cageCellMap = cage.cells.map( (a) => a.join(",") );;
+    let first = true;
+    cage.cells.forEach( cell => {
+       let i = cell[0];
+       let j = cell[1];
+       var wrapper = gridSquareWrappers[9*i + j].divElement;
+       this.drawThermoItems(wrapper, width, null, cageCellMap, i, j, first );
+       first = false;
+       // cage border, remove the left, right, etc if the neighbor is part of the same cage
+    });
   });
 
 
