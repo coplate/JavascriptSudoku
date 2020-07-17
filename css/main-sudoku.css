@@ -212,6 +212,31 @@ position: absolute;
 .tubeUL {
    left: -13.5px; top: 0px;  transform: rotate(45deg) scaleX(1.45);
 }
+
+.diff {
+    position: absolute;
+     height: 20px;
+     width: 20px;
+     background-color: #bbb;
+     border-radius: 50%;
+      left: 32px; top: 32px;
+      z-index: 5;
+      text-align: center;
+        text-align: middle;
+}
+.diffU {
+      left: 32px; top: -10px;
+}
+.diffUR {
+    left: 71px; top: -10px;  transform: rotate(-45deg) scaleX(1.5);
+}
+.diffR {
+      left: 71px; top: 32px;
+}
+.diffDR {
+    left: 71px; top: 71px; transform: rotate(45deg) scaleX(1.5);
+}
+
 .diagonal1 {
 position: absolute;
     left: -105px; top: 424px; width: 1060px; height: 2px; transform: rotate(45deg); background-color: lightblue; border-radius: 2px;

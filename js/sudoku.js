@@ -123,6 +123,18 @@ class Sudoku {
         "value": parseInt(document.getElementById('cageValue').value)
       }]);
     }
+    if( mode == "consecutive"){
+          this.importConsecutiveList([{
+            "cells": indexMap.map((idx) => [Math.floor(idx/9), idx%9]),
+            "value": parseInt(document.getElementById('cageValue').value) || 1
+          }]);
+        }
+    if( mode == "anti-night"){
+          this.importAntiKnightList([{
+            "cells": indexMap.map((idx) => [Math.floor(idx/9), idx%9]),
+            "value": parseInt(document.getElementById('cageValue').value)
+          }]);
+        }
     this.logicGrid.checkConstraints();
 
     //clearClass("selected-mode");
@@ -252,7 +264,7 @@ class Sudoku {
      importThermometers(thermometers){
         // logic
         thermometers.forEach((thermometer) => {
-          var thermoRegion = new OrderedRegion();
+          var thermoRegion = new OrderedRegion(">", thermometer.value);
           // Ordered regions need to chack the X and Y space, and the way I do it now is having all candidates in cell A come first, then B, then C and so on.
           thermometer.cells.forEach( cell => {
           for (var i = 0; i < 9; i++) {
@@ -278,7 +290,89 @@ class Sudoku {
 
         this.viewGrid.drawThermometers(thermometers, this.viewGrid.gridSquareWrappers, this.container.offsetWidth);
       }
+    importAntiKnightList(antiKnightList){
+        // logic
 
+        antiKnightList.forEach((antiKnight) => {
+          let antiKnightMembers = antiKnight.cells.map( cell => cell.join(","))
+          for (var i = 0; i < 9; i++) {
+            antiKnight.cells.forEach( cell => {
+              let knightConstraint = new Constraint('knight');
+
+              let row = cell[0];
+              let column = cell[1];
+
+              let k = 9* row + column;
+
+              let candidate = this.logicGrid.squareList[k].candidateList[i];
+
+              [[-2,1],[-2,-1],[2,1],[2,-1],[1,2],[-1,2],[1,-2],[-1,-2],[0,0]].forEach(combo => {
+                let y = combo[0];
+                let x = combo[1];
+
+                let nr =row + y;
+                let nc = column + x;
+
+                  if( nr >= 0 &&  nc >= 0 &&  nr < 9 &&  nc < 9){
+                    if( antiKnightMembers.includes( [ nr, nc ].join(",") ) ){
+                      //console.log(square, nr,nc);
+                      let newSquareNumber = parseInt(9* nr + nc);
+
+                      let knightSquare = this.logicGrid.squareList[ newSquareNumber];
+                      let knightCandidate = knightSquare.candidateList[candidate.id];
+                      knightConstraint.candidateList.push(knightCandidate);
+                      }
+                  }
+              knightConstraint.candidateList.push(candidate);
+              candidate.constraintList.push(knightConstraint);
+              //this.logicGrid.squareList[k].candidateList[i].constraintList.push(knightConstraint);
+
+              });
+              this.logicGrid.constraintList.push(knightConstraint);
+
+
+              /*
+               cageConstraint.candidateList.push(sudoku.logicGrid.squareList[k].candidateList[i]);
+                          sudoku.logicGrid.squareList[k].candidateList[i].constraintList.push(cageConstraint);
+                        });
+                        sudoku.logicGrid.constraintList.push(cageConstraint);
+              */
+            });
+
+          }
+
+        });
+
+      }
+     importConsecutiveList(consecutiveList){
+        // logic
+        consecutiveList.forEach((thermometer) => {
+          var thermoRegion = new OrderedRegion("!=", thermometer.value);
+          // Ordered regions need to chack the X and Y space, and the way I do it now is having all candidates in cell A come first, then B, then C and so on.
+          thermometer.cells.forEach( cell => {
+          for (var i = 0; i < 9; i++) {
+
+            var thermoConstraint = new Constraint('thermo'); // t is thermometer#, j is Candidate Value#
+
+
+               let c = cell[0];
+               let r = cell[1];
+               let k = c*9 + r;
+               //cageConstraint[0] == where can 0 go in teh cells in the candidatelist of this constraint'
+               thermoConstraint.candidateList.push(this.logicGrid.squareList[k].candidateList[i]);
+               this.logicGrid.squareList[k].candidateList[i].constraintList.push(thermoConstraint);
+
+               thermoRegion.candidateList.push(this.logicGrid.squareList[k].candidateList[i]);
+               this.logicGrid.squareList[k].candidateList[i].orderedRegionList.push(thermoRegion);
+
+            this.logicGrid.constraintList.push(thermoConstraint);
+          }
+          });
+          this.logicGrid.orderedRegionList.push(thermoRegion);
+        });
+
+        this.viewGrid.drawConsecutiveList(consecutiveList, this.viewGrid.gridSquareWrappers, this.container.offsetWidth);
+      }
 }
 
 function clearClass(className) {
@@ -570,39 +664,12 @@ class Candidate {
     // If this candidat sees an X,Y pair in any combination of regions, it cannot be X or Y
     // also ty to do a,b,c; a,b,c,d etc
     this.orderedRegionList.forEach(
-      region => {
-        let cl = region.candidateList;
-        let g = cl.filter( candidate => (candidate != this) && candidate.guessed );
-        let a = g.filter(candidate => candidate.id >= this.id && cl.indexOf(candidate) < cl.indexOf(this));
-        let z = g.filter(candidate => candidate.id <= this.id && cl.indexOf(candidate) > cl.indexOf(this));
-        this.valid = this.valid && ((a.length + z.length)==0);
-        // the above handles guessed candidates
-        // the below will attempt to handle unguessed candidates, ex: 9 cannot ever be in the first cell, 1 cannot be in the last
-        // If any of the cells below me cannot be N-x, I cannot be N
-        // TODO: tidy this
-        // TODO: run this on board population
-        // TODO: capture if the grid directly above it is missing an option, to properly create ladders
 
-        // find the cell preceeding me in the ordered region?
-        let squareIndex = Math.floor(cl.indexOf(this) /9);
-        let predecessorIndex = squareIndex -1;
-        let nextIndex = squareIndex +1;
-        let previous = cl.filter( (candidate, pidx) => ( Math.floor(pidx/9) == predecessorIndex && candidate.valid ) );
-        // my minimum value is 1 + the lowest value in my predecessot
-        if( previous.length>0 ){
-          let plow = previous[0].id; // minimum of predecessor
-          if( this.id < (1+plow) ){
-            this.valid = this.valid && false;
-          }
-        }
-        let next = cl.filter( (candidate, pidx) => ( Math.floor(pidx/9) == nextIndex && candidate.valid ) );
-        // my max value is -1 + the lowest value in my follow
-        if( next.length>0 ){
-          let nhigh = next[next.length-1].id; // max of next
-          if( this.id > (nhigh-1) ){
-            this.valid = this.valid && false;
-          }
-        }
+      region => {
+          var allowed = region.allows(this);
+          this.valid = this.valid && allowed;
+
+
       }
     );
     this.setConflict('collision',(this.guessed && !this.validProp) ||
@@ -615,9 +682,12 @@ class Candidate {
  in these regions, you must ascend or descend as appropriate
  */
 class OrderedRegion {
-  constructor(type) {
+
+  constructor(type, minStep=1) {
     this.candidateList = []; // Grid squares are part of candidates, so if we use this type we can borrow some logic
-    this.type = type;
+    this.type = type; // ">" for candidate must be greater than predecessor
+                      // "!=" for candidate must not be equal to predecessor
+    this.minStep = minStep;
   }
 
   updateCandidates() {
@@ -626,6 +696,75 @@ class OrderedRegion {
 
   check() {
     // constraint sets a solved flag if there is only 1, but this should modify constraint validity
+  }
+
+  allows(other){
+    var step = this.minStep;
+   var valid =  true;
+    valid = valid && other.validProp ;
+    let cl = this.candidateList;
+    let g = cl.filter( candidate => (candidate != other) && candidate.guessed );
+    // these next two are different for ">" and "!="
+    if( this.type == ">"){
+      let a = g.filter(candidate => candidate.id >= other.id && cl.indexOf(candidate) < cl.indexOf(other));
+      let z = g.filter(candidate => candidate.id <= other.id && cl.indexOf(candidate) > cl.indexOf(other));
+      valid = other.valid && ((a.length + z.length)==0);
+    }
+    if( this.type == "!="){
+      let a = g.filter(candidate => [candidate.id-step,candidate.id+step].includes(other.id) && cl.indexOf(candidate) == (cl.indexOf(other)-step));
+      let z = g.filter(candidate =>[candidate.id-step,candidate.id+step].includes(other.id) && cl.indexOf(candidate) == (cl.indexOf(other)+step));
+      valid = other.valid && ((a.length + z.length)==0);
+
+    }
+    // the above handles guessed candidates
+    // the below will attempt to handle unguessed candidates, ex: 9 cannot ever be in the first cell, 1 cannot be in the last
+    // If any of the cells below me cannot be N-x, I cannot be N
+    // TODO: tidy this
+    // TODO: run this on board population
+    // TODO: capture if the grid directly above it is missing an option, to properly create ladders
+
+
+    // find the cell preceeding me in the ordered region?
+    let squareIndex = Math.floor(cl.indexOf(other) /9);
+    let predecessorIndex = squareIndex -1;
+    let nextIndex = squareIndex +1;
+
+    let previous = cl.filter( (candidate, pidx) => ( Math.floor(pidx/9) == predecessorIndex && candidate.valid ) );
+    // my minimum value is 1 + the lowest value in my predecessot
+    let next = cl.filter( (candidate, pidx) => ( Math.floor(pidx/9) == nextIndex && candidate.valid ) );
+     // my max value is -1 + the lowest value in my follow
+
+    if( this.type == ">"){
+      if( previous.length>0 ){
+        let plow = previous[0].id; // minimum of predecessor
+        if( other.id < (plow+1) ){
+          valid = valid && false;
+        }
+      }
+
+      let next = cl.filter( (candidate, pidx) => ( Math.floor(pidx/9) == nextIndex && candidate.valid ) );
+      // my max value is -1 + the lowest value in my follow
+      if( next.length>0 ){
+        let nhigh = next[next.length-1].id; // max of next
+        if( other.id > (nhigh-1) ){
+          valid = valid && false;
+        }
+      }
+    }
+
+    if( this.type == "!="){
+      let vP = previous.map(prev => prev.id);
+      if( vP.length > 0 && ! (vP.includes(other.id+step) || vP.includes(other.id-step) ) ){
+        valid = valid && false;
+      }
+
+      let vN = next.map(n => n.id);
+      if( vN.length > 0 && ! ( vN.includes(other.id+step) || vN.includes(other.id-step) ) ){
+        valid = valid && false;
+      }
+    }
+
+    return valid;
   }
 }
 /* A "Constraint" is, for example, Where can digit 8 go in this Region */
@@ -1118,7 +1257,91 @@ drawCages(killerCages, gridSquareWrappers, width){
 
 }
 
+drawConsecutiveItems(divElement, width, value, cageValues, i, j, first){
+  var thermoDiv = document.createElement('div');
+  divElement.appendChild(thermoDiv);
+  thermoDiv.style.fontSize = (width*0.018) + 'px';
+  thermoDiv.style.fontWeight="bold";
+//  if( value != null ){
+//    thermoDiv.innerHTML=value;
+//  }
+  thermoDiv.classList.add('thermo');
 
+//  if( first ){
+//      var bulbDiv = document.createElement('div');
+//      thermoDiv.appendChild(bulbDiv);
+//      bulbDiv.classList.add("bulb");
+//  }
+
+  //cageDiv.style.outlineStyle = "dashed";
+  let up = (i+9-1)%9;
+  let down = (i+9+1)%9;
+  let center = [i,j];
+  let left = (j+9-1)%9;
+  let right = (j+9+1)%9;
+  let directions = [];
+
+  let idx  = cageValues.indexOf([i, j].join(","));
+  let upIdx = cageValues.indexOf([up, j].join(","));
+  let uprightIdx = cageValues.indexOf([up, right].join(","));
+  let rightIdx = cageValues.indexOf([i, right].join(","));
+  let downrightIdx = cageValues.indexOf([down, right].join(","));
+  // these only need unidirectional, so only to UP, UPRIGHT, RIGHT, and DOWNRIGHT
+
+  if( cageValues.includes([down, j].join(",")) && i < 8 ){
+    //directions.push("D");
+  }
+  if( upIdx >= 0 && Math.abs(idx - upIdx) == 1 && i > 0){
+    directions.push("U");
+  }
+  if( rightIdx >= 0 && Math.abs(idx - rightIdx) == 1 && j < 8 ){
+  directions.push("R");
+  }
+  if( cageValues.includes([i, left].join(",")) && j > 0){
+  //directions.push("L");
+  }
+  if( cageValues.includes([down, left].join(",")) && i < 8 && j > 0  ){
+ //directions.push("DL");
+    }
+    if( cageValues.includes([up, left].join(",")) && i > 0 && j > 0 ){
+    //directions.push("UL");
+    }
+    if( downrightIdx >= 0 && Math.abs(idx - downrightIdx) == 1 && i < 8 && j < 8 ){
+    directions.push("DR");
+    }
+    if( uprightIdx >= 0 && Math.abs(idx - uprightIdx) == 1 && i > 0 && j < 8){
+    directions.push("UR");
+    }
+
+    directions.forEach( direction => {
+      var tubeDiv = document.createElement('div');
+      thermoDiv.appendChild(tubeDiv);
+      tubeDiv.classList.add("diff");
+      tubeDiv.innerHTML=value;
+      tubeDiv.classList.add('diff'+direction);
+    });
+
+
+
+
+}
+drawConsecutiveList(consecutiveList, gridSquareWrappers, width){
+
+  consecutiveList.forEach( cage => {
+    let cageCellMap = cage.cells.map( (a) => a.join(",") );;
+    let first = true;
+    cage.cells.forEach( cell => {
+       let i = cell[0];
+       let j = cell[1];
+       var wrapper = gridSquareWrappers[9*i + j].divElement;
+       this.drawConsecutiveItems(wrapper, width, cage.value, cageCellMap, i, j, first );
+       first = false;
+       // cage border, remove the left, right, etc if the neighbor is part of the same cage
+    });
+  });
+
+
+}
 drawThermoItems(divElement, width, value, cageValues, i, j, first){
   var thermoDiv = document.createElement('div');
   divElement.appendChild(thermoDiv);
@@ -1143,32 +1366,41 @@ drawThermoItems(divElement, width, value, cageValues, i, j, first){
   let right = (j+9+1)%9;
   let directions = [];
 
+  let idx  = cageValues.indexOf([i, j].join(","));
+  let upIdx = cageValues.indexOf([up, j].join(","));
+  let uprightIdx = cageValues.indexOf([up, right].join(","));
+  let rightIdx = cageValues.indexOf([i, right].join(","));
+  let downrightIdx = cageValues.indexOf([down, right].join(","));
 
+  let downIdx = cageValues.indexOf([down, j].join(","));
+  let downLeftIdx = cageValues.indexOf([down, left].join(","));
+  let leftIdx = cageValues.indexOf([i, left].join(","));
+  let upLeftIdx = cageValues.indexOf([up, left].join(","));
 
-  if( cageValues.includes([down, j].join(",")) && i < 8 ){
-    directions.push("D");
-  }
-  if( cageValues.includes([up, j].join(",")) && i > 0){
-  directions.push("U");
-  }
-  if( cageValues.includes([i, right].join(",")) && j < 8 ){
-  directions.push("R");
-  }
-  if( cageValues.includes([i, left].join(",")) && j > 0){
-  directions.push("L");
-  }
-  if( cageValues.includes([down, left].join(",")) && i < 8 ){
-  directions.push("DL");
+    if( downIdx >= 0 && Math.abs(idx - downIdx) == 1 && i < 8 ){
+      directions.push("D");
     }
-    if( cageValues.includes([up, left].join(",")) && i > 0){
-    directions.push("UL");
+    if( upIdx >= 0 && Math.abs(idx - upIdx) == 1 && i > 0){
+    directions.push("U");
     }
-    if( cageValues.includes([down, right].join(",")) && j < 8 ){
-    directions.push("DR");
+    if( rightIdx >= 0 && Math.abs(idx - rightIdx) == 1 && j < 8 ){
+    directions.push("R");
     }
-    if( cageValues.includes([up, right].join(",")) && j > 0){
-    directions.push("UR");
+    if( leftIdx >= 0 && Math.abs(idx - leftIdx) == 1 && j > 0){
+    directions.push("L");
     }
+    if( downLeftIdx >= 0 && Math.abs(idx - downLeftIdx) == 1 && i < 8 && j > 0  ){
+      directions.push("DL");
+      }
+      if( upLeftIdx >= 0 && Math.abs(idx - upLeftIdx) == 1 && i > 0 && j > 0 ){
+      directions.push("UL");
+      }
+      if( downrightIdx >= 0 && Math.abs(idx - downrightIdx) == 1 && i < 8 && j < 8 ){
+      directions.push("DR");
+      }
+      if( uprightIdx >= 0 && Math.abs(idx - uprightIdx) == 1 && i > 0 && j < 8){
+      directions.push("UR");
+      }
 
     directions.forEach( direction => {
       var tubeDiv = document.createElement('div');
