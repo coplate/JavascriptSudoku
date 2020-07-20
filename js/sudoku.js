@@ -737,7 +737,7 @@ class OrderedRegion {
     if( this.type == ">"){
       if( previous.length>0 ){
         let plow = previous[0].id; // minimum of predecessor
-        if( other.id < (plow+1) ){
+        if( other.id < (plow+step) ){
           valid = valid && false;
         }
       }
@@ -746,7 +746,7 @@ class OrderedRegion {
       // my max value is -1 + the lowest value in my follow
       if( next.length>0 ){
         let nhigh = next[next.length-1].id; // max of next
-        if( other.id > (nhigh-1) ){
+        if( other.id > (nhigh-step) ){
           valid = valid && false;
         }
       }
